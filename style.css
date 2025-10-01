@@ -1,0 +1,275 @@
+/* ---------- Tokens ---------- */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+:root{
+  --bg:#ffffff;
+  --bg-elev:#f6f7fb;               /* fundo do painel */
+  --panel:#f7f7f9;
+  --border:#e6e8ee;
+  --muted:#6b7280;
+  --text:#13161b;
+  --brand:#e03636;                  /* vermelho do topo/botões */
+  --brand-weak:#fdecec;
+  --brand-border:#f5b7b7;
+  --radius:14px;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.08);
+}
+
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial;
+  color:var(--text);
+  background:var(--bg);
+}
+
+/* ---------- Layout ---------- */
+.app{
+  display:grid;
+  grid-template-columns:1fr 420px;  /* mapa | lateral mais larga, como no mock */
+  height:100dvh;
+  background:var(--bg);
+}
+
+#map{width:100%;height:100%;position:relative;z-index:0}
+
+/* ---------- Painel lateral ---------- */
+.panel{
+  display:grid;
+  grid-template-rows:auto 1fr;
+  background:var(--bg-elev);
+  border-left:1px solid var(--border);
+}
+
+/* Cabeçalho fixo com busca e chips */
+.panel-header{
+  position:sticky; top:0; z-index:5;
+  background:var(--bg-elev);
+  padding:14px 14px 10px;
+  border-bottom:1px solid var(--border);
+  box-shadow:0 6px 12px rgba(0,0,0,.02);
+}
+
+/* ---------- Busca estilo cápsula ---------- */
+.search{
+  display:flex; align-items:center; gap:10px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:8px 8px 8px 14px;
+  box-shadow:var(--shadow);
+}
+.search input[type="text"]{
+  flex:1; font:inherit; border:0; outline:0; background:transparent;
+}
+.search input::placeholder{color:#9aa0a6}
+.search button{
+  border:0; cursor:pointer; padding:0; width:40px; height:36px;
+  border-radius:999px;
+  background:var(--brand);
+  color:#fff; line-height:1; font-weight:600;
+  box-shadow:0 2px 8px rgba(224,54,54,.35);
+}
+/* transforma o texto “Limpar” num ícone de lupa (sem mexer no HTML) */
+#btnLimpar{
+  color:transparent; overflow:hidden; position:relative;
+}
+#btnLimpar::before{
+  content:""; position:absolute; inset:0; margin:auto;
+  width:18px; height:18px; border:2px solid #fff; border-radius:50%;
+  transform:translateY(-1px);
+}
+#btnLimpar::after{
+  content:""; position:absolute; width:9px; height:2px; background:#fff;
+  right:9px; top:20px; transform:rotate(45deg);
+}
+
+/* ---------- Chips (Filtros) ---------- */
+.chips{
+  display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+}
+.chip{
+  font-size:12px; line-height:1;
+  border:1px solid var(--border);
+  background:#fff;
+  color:#2b2f36;
+  padding:7px 12px;
+  border-radius:999px;
+  cursor:pointer;
+  box-shadow:0 1px 2px rgba(0,0,0,.03);
+  transition:background .15s ease, border-color .15s ease, color .15s ease, transform .06s ease;
+}
+.chip:hover{transform:translateY(-1px)}
+.chip[aria-pressed="true"]{
+  background:var(--brand-weak);
+  border-color:var(--brand-border);
+  color:#9b1111;
+  font-weight:600;
+}
+
+.chips--extras { margin-top:12px }
+.chip--extra{
+  position:relative; padding-left:28px;
+  background:#eee;
+}
+.chip--extra::before{
+  content:""; position:absolute; left:10px; top:50%; transform:translateY(-50%);
+  width:8px; height:8px; border-radius:999px; background:#e03636;
+}
+.chip--extra[aria-pressed="true"]{
+  background:var(--brand-weak);
+  border-color:var(--brand-border);
+  color:#9b1111;
+  font-weight:600;
+}
+
+/* ---------- Lista rolável ---------- */
+.panel-list{
+  overflow:auto;
+  padding:12px;
+  background:var(--bg-elev);
+  scrollbar-width:thin;
+  scrollbar-color:#cfcfd6 transparent;
+}
+.panel-list::-webkit-scrollbar{width:8px}
+.panel-list::-webkit-scrollbar-thumb{background:#cfcfd6;border-radius:8px}
+
+/* ---------- Cards (estilo “feed” da direita) ---------- */
+.card{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px 10px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:#fff;
+  box-shadow:var(--shadow);
+  margin-bottom:12px;
+  cursor:pointer;
+  transition:transform .06s ease, box-shadow .06s ease, border-color .15s ease;
+}
+.card:hover{ transform:translateY(-1px); box-shadow:0 10px 28px rgba(0,0,0,.10) }
+.card.active{ outline:2px solid var(--brand); outline-offset:0 }
+
+/* capa grande no topo do card (se houver img dentro) */
+.card img, .card .cover{
+  grid-column:1/-1;
+  width:100%; height:140px; object-fit:cover;
+  border-radius:10px;
+}
+
+/* título e meta em linha, com “badge” à direita */
+.card h3{
+  margin:0; font-size:15px; line-height:1.25; color:#141821;
+}
+.meta{ color:var(--muted); font-size:12px }
+.badge{
+  justify-self:end; align-self:start;
+  font-size:12px; padding:4px 8px;
+  border-radius:999px;
+  background:var(--brand-weak);
+  color:#9b1111;
+  border:1px solid var(--brand-border);
+}
+
+/* pequenas tags dentro do card (se usar) */
+.card .tags{display:flex;gap:6px;flex-wrap:wrap}
+.card .tag{
+  font-size:11px; padding:4px 8px; border-radius:999px;
+  border:1px solid var(--border); background:#fff; color:#4b5563
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width:980px){
+  .app{
+    grid-template-columns:1fr;
+    grid-template-rows:54dvh 1fr; /* mapa em cima */
+  }
+  .panel{
+    border-left:none; border-top:1px solid var(--border);
+  }
+}
+
+/* ---------- Skip link ---------- */
+.skip-link{
+  position:absolute; left:-9999px; top:auto; width:1px; height:1px;
+}
+.skip-link:focus{
+  left:8px; top:8px; width:auto; height:auto;
+  background:#fff; border:1px solid var(--border);
+  padding:6px 10px; border-radius:8px;
+}
+
+
+/* ---------- CABECALHO ---------- */
+
+/* ====== Topbar ====== */
+.topbar{
+  position:fixed; inset:0 0 auto 0; height:56px;
+  background:var(--brand); color:#fff; z-index:50;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+.topbar-inner{
+  height:100%;
+  max-width:1280px; margin:0 auto;
+  padding:0 16px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+
+/* Logo como imagem */
+.brand-img{
+  display:block;
+  height:28px;        /* ajuste conforme a proporção da sua logo */
+  width:auto;
+}
+.brand{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  color:#fff;
+  text-decoration:none;
+}
+.brand-name{
+  font-weight:800;
+  letter-spacing:.5px;
+  font-size:18px;
+  color:#fff;
+}
+
+/* Menu centralizado */
+.main-nav{
+  position:absolute; left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  display:flex; gap:28px;
+}
+.main-nav a{
+  color:#fff; text-decoration:none; font-weight:600; font-size:15px;
+  opacity:.95;
+}
+.main-nav a:hover{opacity:1; text-decoration:underline}
+
+/* Botão Login à direita */
+.btn-login{
+  display:inline-flex; align-items:center; justify-content:center;
+  height:34px; padding:0 14px;
+  background:#fff; color:var(--brand);
+  border-radius:999px; font-weight:700; text-decoration:none;
+  box-shadow:0 2px 10px rgba(255,255,255,.25), inset 0 0 0 1px rgba(0,0,0,.05);
+}
+
+/* Ajuste do conteúdo p/ header fixo */
+.app{
+  margin-top:56px;
+  height:calc(100dvh - 56px);
+}
+
+/* Responsivo do topo */
+@media (max-width:880px){
+  .topbar-inner{grid-template-columns:auto 1fr auto}
+  .main-nav{gap:14px}
+  .brand-name{font-size:16px}
+}
+@media (max-width:640px){
+  .main-nav{justify-content:center}
+  .main-nav a{font-size:14px}
+  .btn-login{height:32px; padding:0 12px}
+}
