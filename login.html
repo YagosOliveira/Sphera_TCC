@@ -17,7 +17,22 @@
   </script>
 </head>
 <body>
-  <main class="auth">
+  <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="#" aria-label="Página inicial">
+          <img src="./assets/images/LogoSphera.png" alt="Logo" class="brand-img" />
+        </a>
+
+        <nav class="main-nav" aria-label="Principal">
+          <a href="#">Menu</a>
+          <a href="#">Feed</a>
+          <a href="#">Perfil</a>
+        </nav>
+
+        <a class="btn-login" href="#">Login</a>
+      </div>
+  </header>
+  <main class="auth-page">
     <!-- CADASTRO -->
     <form id="formSignup" class="card">
       <h2>Cadastre-se e explore</h2>
@@ -89,7 +104,7 @@
         await ensureProfile();
         // já logado → manda para home
         // troque "/" se quiser levar para outra página (ex.: /owner.html para OWNER)
-        location.href = '/';
+        location.href = '/owner.html';
       }
     });
 
