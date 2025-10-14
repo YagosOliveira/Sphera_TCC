@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Perfil • Sphera</title>
+
+  <!-- CSS atualizado -->
+  <link rel="stylesheet" href="./profile.css" />
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    window.supabase = createClient(
+      "https://ezptlmzxosdssqtwqzrg.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6cHRsbXp4b3Nkc3NxdHdxenJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMDkwNDgsImV4cCI6MjA3Mzg4NTA0OH0.rzKy_WfK0Ut6Vc9bm8IbnKTzsFpWgA6b6amW2xgqJec"
+    );
+  </script>
+</head>
+<body>
+  <!-- Hero -->
+  <div class="profile-hero" id="hero"></div>
+
+  <div class="profile-wrap">
+    <header class="profile-header">
+      <div class="profile-avatar" id="avatar"></div>
+      <div class="title-block">
+        <h1 id="name">Carregando...</h1>
+        <div class="title-row">
+          <div class="rating"><span id="rating">-</span> <span class="star">★</span></div>
+          <span class="status-pill" id="status">...</span>
+        </div>
+        <div class="actions" id="actions"></div>
+      </div>
+    </header>
+
+    <section>
+      <div class="section-title">Mais sobre o local</div>
+      <div class="features" id="features"></div>
+      <div class="features-divider"></div>
+    </section>
+
+    <section class="posts">
+      <h3>Postagens</h3>
+      <div class="posts-grid" id="posts"></div>
+    </section>
+  </div>
+
+  <!-- SCRIPT NOVO -->
+  <script type="module" src="./profile.js"></script>
+</body>
+</html>
