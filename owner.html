@@ -66,8 +66,23 @@
           </div>
         </div>
 
-        <label>URL da imagem (opcional)</label>
-        <input name="image_url" placeholder="https://..." />
+        <!-- IMAGENS -->
+        <div class="cols">
+          <div>
+            <label>Logo (perfil)</label>
+            <input type="file" id="logoFile" accept="image/*" />
+            <div class="img-preview">
+              <img id="logoPreview" alt="Prévia do logo" style="display:none; width:84px; height:84px; border-radius:999px; object-fit:cover; box-shadow:0 2px 10px rgba(0,0,0,.08)"/>
+            </div>
+          </div>
+          <div>
+            <label>Imagem de capa (fundo)</label>
+            <input type="file" id="coverFile" accept="image/*" />
+            <div class="img-preview">
+              <img id="coverPreview" alt="Prévia da capa" style="display:none; width:100%; max-width:420px; height:140px; border-radius:12px; object-fit:cover; box-shadow:0 2px 10px rgba(0,0,0,.08)"/>
+            </div>
+          </div>
+        </div>
 
         <label>Diferenciais</label>
         <div id="featuresBox" class="features"><em class="msg">carregando...</em></div>
@@ -78,118 +93,204 @@
   </div>
 
   <script type="module">
-    const form = document.getElementById('formVenue');
-    const btnSave = document.getElementById('btnSave');
-    const featuresBox = document.getElementById('featuresBox');
-    const statusMsg = document.getElementById('statusMsg');
+  const form        = document.getElementById('formVenue');
+  const btnSave     = document.getElementById('btnSave');
+  const featuresBox = document.getElementById('featuresBox');
+  const statusMsg   = document.getElementById('statusMsg');
 
-    const { data:{ user } } = await supabase.auth.getUser();
-    if (!user) {
-      location.href = '/login.html';
-    }
+  const logoFile     = document.getElementById('logoFile');
+  const coverFile    = document.getElementById('coverFile');
+  const logoPreview  = document.getElementById('logoPreview');
+  const coverPreview = document.getElementById('coverPreview');
 
-    // 1) checa se é OWNER
-    const { data: prof, error: profErr } = await supabase
-      .from('profiles').select('role').eq('id', user.id).single();
-    if (profErr || !prof || prof.role !== 'OWNER') {
-      alert('Apenas estabelecimentos (OWNER) podem acessar.');
-      location.href = '/';
-    }
-
-    // 2) carrega catálogo de features
-    const { data: feats, error: featErr } = await supabase
-      .from('features').select('id, slug, label').order('label');
-    if (featErr) {
-      featuresBox.innerHTML = '<span class="msg">Erro ao carregar diferenciais.</span>';
-    } else {
-      featuresBox.innerHTML = feats.map(f => `
-        <label class="chip">
-          <input type="checkbox" name="features" value="${f.slug}"> ${f.label}
-        </label>
-      `).join('');
-    }
-
-    // 3) carrega (se existir) o venue do dono para edição
-    let currentVenue = null;
-    {
-      const { data: v } = await supabase
-        .from('venues')
-        .select('id, name, category, avg_price, status, rating, lat, lng, address, image_url')
-        .eq('owner_id', user.id)
-        .single();
-      if (v) {
-        currentVenue = v;
-        form.name.value       = v.name ?? '';
-        form.category.value   = v.category ?? '';
-        form.avg_price.value  = v.avg_price ?? '';
-        form.status.value     = v.status ?? 'aberto';
-        form.rating.value     = v.rating ?? '';
-        form.address.value    = v.address ?? '';
-        form.lat.value        = v.lat ?? '';
-        form.lng.value        = v.lng ?? '';
-        form.image_url.value  = v.image_url ?? '';
-
-        // marca features existentes (via view que traz slugs)
-        const { data: currFeats } = await supabase
-          .from('venue_features_view')   // view que criamos
-          .select('slug')
-          .eq('venue_id', v.id);
-
-        const slugs = (currFeats || []).map(x => x.slug);
-        featuresBox.querySelectorAll('input[name="features"]').forEach(chk => {
-          chk.checked = slugs.includes(chk.value);
-        });
-      }
-    }
-
-    // 4) salvar
-    btnSave.addEventListener('click', async (e) => {
-      e.preventDefault();
-      statusMsg.textContent = 'Salvando...';
-
-      const fd = new FormData(form);
-      const payload = {
-        owner_id: user.id,          // RLS exige = auth.uid()
-        name: fd.get('name') || null,
-        category: fd.get('category') || null,
-        avg_price: fd.get('avg_price') ? Number(fd.get('avg_price')) : null,
-        status: fd.get('status') || 'aberto',
-        rating: fd.get('rating') ? Number(fd.get('rating')) : null,
-        lat: fd.get('lat') ? Number(fd.get('lat')) : null,
-        lng: fd.get('lng') ? Number(fd.get('lng')) : null,
-        address: fd.get('address') || null,
-        image_url: fd.get('image_url') || null
-      };
-
-      let venue = currentVenue;
-      if (!venue) {
-        const { data, error } = await supabase.from('venues').insert([payload]).select().single();
-        if (error) { statusMsg.textContent = 'Erro: ' + error.message; statusMsg.style.color = '#b91c1c'; return; }
-        venue = data;
-        currentVenue = data;
-      } else {
-        const { data, error } = await supabase.from('venues')
-          .update(payload).eq('id', venue.id).select().single();
-        if (error) { statusMsg.textContent = 'Erro: ' + error.message; statusMsg.style.color = '#b91c1c'; return; }
-        venue = data;
-      }
-
-      // 5) salva diferenciais usando a RPC add_feature (trabalha por slug)
-      // estratégia simples: limpar todos e re-add conforme marcados
-      await supabase.from('venue_features').delete().eq('venue_id', venue.id);
-
-      const selectedSlugs = [...featuresBox.querySelectorAll('input[name="features"]:checked')]
-        .map(i => i.value);
-
-      await Promise.all(selectedSlugs.map(slug =>
-        supabase.rpc('add_feature', { venue: venue.id, feat_slug: slug })
-      ));
-
-      statusMsg.textContent = 'Salvo com sucesso!';
-      statusMsg.style.color = '#065f46';
-      // opcional: redirecionar
-      // location.href = '/';
+  // helper de preview imediato (sem upload)
+  function preview(input, imgEl){
+    input.addEventListener('change', ()=>{
+      const f = input.files?.[0];
+      if (!f) return;
+      imgEl.src = URL.createObjectURL(f);
+      imgEl.style.display = 'block';
     });
-  </script>
+  }
+  preview(logoFile,  logoPreview);
+  preview(coverFile, coverPreview);
+
+  // ====== AUTH ======
+  const { data:{ user } } = await supabase.auth.getUser();
+  if (!user) {
+    location.href = '/login.html';
+  }
+
+  // 1) checa se é OWNER
+  const { data: prof, error: profErr } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single();
+  if (profErr || !prof || prof.role !== 'OWNER') {
+    alert('Apenas estabelecimentos (OWNER) podem acessar.');
+    location.href = '/';
+  }
+
+  // 2) carrega catálogo de features
+  const { data: feats, error: featErr } = await supabase
+    .from('features').select('id, slug, label').order('label');
+  if (featErr) {
+    featuresBox.innerHTML = '<span class="msg">Erro ao carregar diferenciais.</span>';
+  } else {
+    featuresBox.innerHTML = feats.map(f => `
+      <label class="chip">
+        <input type="checkbox" name="features" value="${f.slug}"> ${f.label}
+      </label>
+    `).join('');
+  }
+
+  // 3) carrega (se existir) o venue do dono para edição
+  let currentVenue = null;
+  {
+    const { data: v } = await supabase
+      .from('venues')
+      .select('id, name, category, avg_price, status, rating, lat, lng, address, image_url, logo_url, cover_url')
+      .eq('owner_id', user.id)
+      .single();
+    if (v) {
+      currentVenue = v;
+      form.name.value       = v.name ?? '';
+      form.category.value   = v.category ?? '';
+      form.avg_price.value  = v.avg_price ?? '';
+      form.status.value     = v.status ?? 'aberto';
+      form.rating.value     = v.rating ?? '';
+      form.address.value    = v.address ?? '';
+      form.lat.value        = v.lat ?? '';
+      form.lng.value        = v.lng ?? '';
+      //form.image_url.value  = v.image_url ?? '';
+
+      // prévias de imagens existentes
+      if (v.logo_url)  { logoPreview.src = v.logo_url;   logoPreview.style.display = 'block'; }
+      if (v.cover_url) { coverPreview.src = v.cover_url; coverPreview.style.display = 'block'; }
+
+      // marca features existentes (via view que traz slugs)
+      const { data: currFeats } = await supabase
+        .from('venue_features_view')   // view que criamos
+        .select('slug')
+        .eq('venue_id', v.id);
+
+      const slugs = (currFeats || []).map(x => x.slug);
+      featuresBox.querySelectorAll('input[name="features"]').forEach(chk => {
+        chk.checked = slugs.includes(chk.value);
+      });
+    }
+  }
+
+  // ===== Helpers de upload =====
+  const BUCKET = 'venues_img';
+
+  async function uploadImage(file, path){
+    // upsert true para sobrescrever se já existir
+    const { error: upErr } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, { contentType: file.type, upsert: true, cacheControl: '3600' });
+    if (upErr) throw upErr;
+
+    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    return pub.publicUrl;
+  }
+
+  // Cria caminho estável por venue + timestamp para burlar cache
+  function buildPath(venueId, kind, file){
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const stamp = Date.now(); // evita cache
+    return `${user.id}/${venueId}-${kind}-${stamp}.${ext}`;
+  }
+
+  // 4) salvar
+  btnSave.addEventListener('click', async (e) => {
+    e.preventDefault();
+    statusMsg.textContent = 'Salvando...';
+    statusMsg.style.color = '';
+
+    const fd = new FormData(form);
+    const payload = {
+      owner_id: user.id,          // RLS exige = auth.uid()
+      name: fd.get('name') || null,
+      category: fd.get('category') || null,
+      avg_price: fd.get('avg_price') ? Number(fd.get('avg_price')) : null,
+      status: fd.get('status') || 'aberto',
+      rating: fd.get('rating') ? Number(fd.get('rating')) : null,
+      lat: fd.get('lat') ? Number(fd.get('lat')) : null,
+      lng: fd.get('lng') ? Number(fd.get('lng')) : null,
+      address: fd.get('address') || null
+      // image_url: fd.get('image_url') || null  // (se ainda quiser)
+    };
+
+    let venue = currentVenue;
+
+    // Passo 1: criar/atualizar dados básicos (sem imagens) para garantir venue.id
+    if (!venue) {
+      const { data, error } = await supabase.from('venues').insert([payload]).select().single();
+      if (error) { statusMsg.textContent = 'Erro: ' + error.message; statusMsg.style.color = '#b91c1c'; return; }
+      venue = data;
+      currentVenue = data;
+    } else {
+      const { data, error } = await supabase.from('venues')
+        .update(payload).eq('id', venue.id).select().single();
+      if (error) { statusMsg.textContent = 'Erro: ' + error.message; statusMsg.style.color = '#b91c1c'; return; }
+      venue = data;
+    }
+
+    // Passo 2: upload das imagens (se foram selecionadas)
+    const updates = {};
+
+    const logoF  = logoFile.files?.[0];
+    if (logoF) {
+      try {
+        const path = buildPath(venue.id, 'logo', logoF);
+        const url  = await uploadImage(logoF, path);
+        updates.logo_url = url;
+      } catch (err) {
+        statusMsg.textContent = 'Erro ao enviar logo: ' + err.message;
+        statusMsg.style.color = '#b91c1c';
+        return;
+      }
+    }
+
+    const coverF = coverFile.files?.[0];
+    if (coverF) {
+      try {
+        const path = buildPath(venue.id, 'cover', coverF);
+        const url  = await uploadImage(coverF, path);
+        updates.cover_url = url;
+      } catch (err) {
+        statusMsg.textContent = 'Erro ao enviar capa: ' + err.message;
+        statusMsg.style.color = '#b91c1c';
+        return;
+      }
+    }
+
+    if (Object.keys(updates).length){
+      const { error: upErr } = await supabase.from('venues').update(updates).eq('id', venue.id);
+      if (upErr) {
+        statusMsg.textContent = 'Erro ao salvar URLs das imagens: ' + upErr.message;
+        statusMsg.style.color = '#b91c1c';
+        return;
+      }
+      // atualiza prévias caso tenha feito upload
+      if (updates.logo_url)  { logoPreview.src = updates.logo_url;  logoPreview.style.display = 'block'; }
+      if (updates.cover_url) { coverPreview.src = updates.cover_url; coverPreview.style.display = 'block'; }
+    }
+
+    // Passo 3: diferenciais (igual você já fazia)
+    await supabase.from('venue_features').delete().eq('venue_id', venue.id);
+
+    const selectedSlugs = [...featuresBox.querySelectorAll('input[name="features"]:checked')]
+      .map(i => i.value);
+
+    await Promise.all(selectedSlugs.map(slug =>
+      supabase.rpc('add_feature', { venue: venue.id, feat_slug: slug })
+    ));
+
+    statusMsg.textContent = 'Salvo com sucesso!';
+    statusMsg.style.color = '#065f46';
+    // location.href = '/';
+  });
+</script>
+
 </body>
 </html>
