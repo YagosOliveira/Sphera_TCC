@@ -73,8 +73,8 @@ async function fetchVenueFeatures(venueId){
  *  RENDER UI
  *  ========================= */
 function renderHero(venue){
-  $("#hero").style.backgroundImage = venue.image_url
-    ? `url("${venue.image_url}")` : "linear-gradient(90deg,#ddd,#eee)";
+  $("#hero").style.backgroundImage = venue.cover_url
+    ? `url("${venue.cover_url}")` : "linear-gradient(90deg,#ddd,#eee)";
   $("#avatar").style.backgroundImage = venue.logo_url
     ? `url("${venue.logo_url}")` : "url('/assets/images/placeholder-logo.png')";
 }
