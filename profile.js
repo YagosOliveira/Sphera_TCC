@@ -115,39 +115,34 @@ function renderFeatures(catalog, selectedIds){
   });
 }
 
-function renderPosts(posts=[]) {
-  // placeholder para quando você ligar com o banco
-  const grid = $("#posts");
-  grid.innerHTML = "";
-  posts.forEach(p=>{
-    const el = document.createElement("article");
-    el.className = "post-card";
-    el.innerHTML = `
-      <div class="post-head">${p.title}</div>
+function renderPosts(posts = []) {
+  const grid = document.getElementById('posts');
+  if (!Array.isArray(posts)) posts = [];  // Garantir que seja um array
+  grid.innerHTML = posts.length ? posts.map(p => `
+    <article class="post-card">
+      <div class="post-head">
+        <div>${p.title || '(Sem título)'}</div>
+        ${p.published ? '' : '<span class="status-pill" style="margin-left:8px;">Rascunho</span>'}
+      </div>
       <div class="post-body">
-        <div class="post-img" style="background-image:url('${p.image || ''}')"></div>
-        <div class="post-text">${p.text || ""}</div>
-      </div>`;
-    grid.appendChild(el);
-  });
+        ${p.image_url ? `<div class="post-img" style="background-image:url('${p.image_url}')"></div>` : ''}
+        ${p.body ? `<div class="post-text">${p.body}</div>` : ''}
+      </div>
+    </article>
+  `).join('') : `<p class="meta">Sem postagens ainda.</p>`;  // Caso esteja vazio
 }
+
+// ========PARA BAIXO É A EDIÇÃO ==========
+// ========PARA BAIXO É A EDIÇÃO ==========
+// ========PARA BAIXO É A EDIÇÃO ==========
+
 
 /** =========================
  *  EDIT MODE (apenas owner)
  *  ========================= */
-function buildEditPanel(venue, catalog, selectedIds){
-  // cria um drawer simples acima da seção
-  const panel = document.createElement("section");
-  panel.className = "card";
-  panel.style.margin = "8px 0 18px";
-  panel.innerHTML = `
-    <div class="bar" style="margin-bottom:10px;">
-      <h2 style="margin:0;font-size:18px;">Editar informações</h2>
-      <div style="display:flex;gap:8px;">
-        <button id="saveVenue" class="btn primary">Salvar</button>
-      </div>
-    </div>
-
+function buildEditModal(venue, catalog, selectedIds){
+  const body = document.getElementById('modalBody');
+  body.innerHTML = `
     <div class="cols">
       <div>
         <label>Nome</label>
@@ -161,8 +156,8 @@ function buildEditPanel(venue, catalog, selectedIds){
       <div>
         <label>Status</label>
         <select id="ed_status">
-          <option value="Aberto"   ${venue.status==="Aberto"?"selected":""}>Aberto</option>
-          <option value="Fechado"  ${venue.status==="Fechado"?"selected":""}>Fechado</option>
+          <option value="aberto"  ${(venue.status?.toLowerCase()==="aberto")?"selected":""}>Aberto</option>
+          <option value="fechado" ${(venue.status?.toLowerCase()==="fechado")?"selected":""}>Fechado</option>
         </select>
       </div>
       <div>
@@ -172,11 +167,11 @@ function buildEditPanel(venue, catalog, selectedIds){
 
       <div>
         <label>Preço médio (R$)</label>
-        <input id="ed_price" type="number" min="0" step="1" value="${venue.price ?? ""}" />
+        <input id="ed_price" type="number" min="0" step="1" value="${venue.avg_price ?? venue.price ?? ""}" />
       </div>
       <div>
         <label>Imagem (banner) URL</label>
-        <input id="ed_image" value="${venue.image_url ?? ""}" placeholder="https://..." />
+        <input id="ed_image" value="${venue.cover_url ?? venue.image_url ?? ""}" placeholder="https://..." />
       </div>
 
       <div class="cols" style="grid-column:1/-1; grid-template-columns:1fr 1fr;">
@@ -193,68 +188,68 @@ function buildEditPanel(venue, catalog, selectedIds){
       <div class="cols" style="grid-column:1/-1; grid-template-columns:1fr 1fr;">
         <div>
           <label>Latitude</label>
-          <input id="ed_lat" type="number" step="0.000001" value="${venue.latitude ?? ""}" />
+          <input id="ed_lat" type="number" step="0.000001" value="${venue.lat ?? venue.latitude ?? ""}" />
         </div>
         <div>
           <label>Longitude</label>
-          <input id="ed_lng" type="number" step="0.000001" value="${venue.longitude ?? ""}" />
+          <input id="ed_lng" type="number" step="0.000001" value="${venue.lng ?? venue.longitude ?? ""}" />
         </div>
       </div>
     </div>
 
     <label style="margin-top:14px;display:block;">Diferenciais</label>
     <div class="features" id="ed_features"></div>
+
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <button id="saveVenue" class="btn">Salvar</button>
+      <button id="cancelEdit" class="btn ghost">Cancelar</button>
+    </div>
     <p class="meta" id="saveMsg" style="margin-top:8px;display:none;"></p>
   `;
 
-  // checkboxes de features
-  const box = panel.querySelector("#ed_features");
+  // fecha modal
+  document.getElementById('modalClose').onclick = closeModal;
+  body.querySelector('#cancelEdit').onclick = closeModal;
+
+  // chips de features
+  const box = body.querySelector("#ed_features");
   catalog.forEach(f=>{
     const w = document.createElement("label");
-    w.className = "chip";
-    w.style.cursor = "pointer";
+    w.className = "chip"; w.style.cursor = "pointer";
     const checked = selectedIds.includes(f.id) ? "checked" : "";
     w.innerHTML = `<input type="checkbox" data-id="${f.id}" ${checked}/> ${f.label}`;
     box.appendChild(w);
   });
 
   // salvar
-  panel.querySelector("#saveVenue").addEventListener("click", async ()=>{
-    const msg = panel.querySelector("#saveMsg");
+  body.querySelector("#saveVenue").addEventListener("click", async ()=>{
+    const msg = body.querySelector("#saveMsg");
     msg.style.display="none";
 
     const payload = {
-      name: $("#ed_name", panel).value.trim(),
-      category: $("#ed_category", panel).value.trim(),
-      status: $("#ed_status", panel).value,
-      rating: Number($("#ed_rating", panel).value) || null,
-      price: Number($("#ed_price", panel).value) || null,
-      image_url: $("#ed_image", panel).value.trim() || null,
-      logo_url: $("#ed_logo", panel).value.trim() || null,
-      address: $("#ed_address", panel).value.trim() || null,
-      latitude: $("#ed_lat", panel).value ? Number($("#ed_lat", panel).value) : null,
-      longitude: $("#ed_lng", panel).value ? Number($("#ed_lng", panel).value) : null,
-      updated_at: new Date().toISOString(),
+      name: body.querySelector("#ed_name").value.trim(),
+      category: body.querySelector("#ed_category").value.trim(),
+      status: body.querySelector("#ed_status").value,
+      rating: Number(body.querySelector("#ed_rating").value) || null,
+      avg_price: Number(body.querySelector("#ed_price").value) || null,
+      cover_url: body.querySelector("#ed_image").value.trim() || null,  // banner/capa
+      logo_url:  body.querySelector("#ed_logo").value.trim()  || null,
+      address:   body.querySelector("#ed_address").value.trim() || null,
+      lat: body.querySelector("#ed_lat").value ? Number(body.querySelector("#ed_lat").value) : null,
+      lng: body.querySelector("#ed_lng").value ? Number(body.querySelector("#ed_lng").value) : null,
+      //updated_at: new Date().toISOString(),
     };
 
-    const { error: upErr } = await supabase
-      .from("venues")
-      .update(payload)
-      .eq("id", venue.id);
+    const { error: upErr } = await supabase.from("venues").update(payload).eq("id", venue.id);
     if (upErr){
-      msg.textContent = "Erro ao salvar informações do local: " + upErr.message;
+      msg.textContent = "Erro ao salvar: " + upErr.message;
       msg.style.color = "#b91c1c"; msg.style.display="block"; return;
     }
 
-    // sincroniza features
-    const checkedIds = $$("input[type=checkbox][data-id]", panel)
+    // features
+    const checkedIds = [...body.querySelectorAll("input[type=checkbox][data-id]")]
       .filter(c=>c.checked).map(c=>Number(c.dataset.id));
-
-    // estratégia simples: apaga todas & insere as selecionadas
-    const { error: delErr } = await supabase
-      .from("venue_features")
-      .delete()
-      .eq("venue_id", venue.id);
+    const { error: delErr } = await supabase.from("venue_features").delete().eq("venue_id", venue.id);
     if (delErr){
       msg.textContent = "Erro ao salvar diferenciais (delete): " + delErr.message;
       msg.style.color = "#b91c1c"; msg.style.display="block"; return;
@@ -271,15 +266,155 @@ function buildEditPanel(venue, catalog, selectedIds){
     msg.textContent = "Informações salvas!";
     msg.style.color = "#065f46"; msg.style.display="block";
 
-    // re-render básico (poderia reconsultar)
-    renderHero({ ...venue, ...payload });
-    renderHeader({ ...venue, ...payload });
+    // re-render da página
+    const merged = { ...venue, ...payload };
+    renderHero(merged);
+    renderHeader(merged);
     renderFeatures(catalog, checkedIds);
+
+    setTimeout(closeModal, 700);
   });
 
-  // insere logo abaixo do header
-  $(".profile-wrap").insertBefore(panel, $(".profile-wrap").children[1]);
+  openModal();
 }
+
+
+
+// ========PARA BAIXO É O GRID DE POSTS ==========
+// ========PARA BAIXO É O GRID DE POSTS ==========
+// ========PARA BAIXO É O GRID DE POSTS ==========
+
+
+// ===== Upload helper (bucket 'posts')
+async function uploadPostImage(file, userId, venueId){
+  if (!file) return null;
+  const path = `${userId}/${venueId}/${Date.now()}-${file.name}`;
+  const { error: upErr } = await supabase.storage
+      .from('posts')
+      .upload(path, file, { upsert: true, cacheControl: '3600', contentType: file.type });
+  if (upErr) throw upErr;
+  const { data: pub } = supabase.storage.from('posts').getPublicUrl(path);
+  return pub.publicUrl;
+}
+
+// ===== Modal de nova postagem
+function buildPostModal(venue){
+  const body = document.getElementById('modalBody');
+  body.innerHTML = `
+    <div class="cols">
+      <div style="grid-column:1/-1">
+        <label>Título</label>
+        <input id="post_title" placeholder="Ex.: Combo Happy Hour" />
+      </div>
+      <div style="grid-column:1/-1">
+        <label>Descrição</label>
+        <textarea id="post_body" placeholder="Texto da sua postagem"></textarea>
+      </div>
+      <div>
+        <label>Imagem (opcional)</label>
+        <input type="file" id="post_image" accept="image/*" />
+      </div>
+      <div>
+        <label>Publicar agora?</label>
+        <select id="post_published">
+          <option value="true" selected>Sim</option>
+          <option value="false">Salvar como rascunho</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <button id="btnPublish" class="btn">Publicar</button>
+      <button id="btnCancelPost" class="btn ghost">Cancelar</button>
+    </div>
+    <p class="meta" id="postMsg" style="margin-top:8px; display:none;"></p>
+  `;
+
+  document.getElementById('editTitle').textContent = 'Nova postagem';
+  document.getElementById('modalClose').onclick = closeModal;
+  body.querySelector('#btnCancelPost').onclick = closeModal;
+
+  body.querySelector('#btnPublish').addEventListener('click', async ()=>{
+    const msg = body.querySelector('#postMsg');
+    msg.style.display = 'none';
+
+    const title = body.querySelector('#post_title').value.trim();
+    const text  = body.querySelector('#post_body').value.trim();
+    const file  = body.querySelector('#post_image').files?.[0] || null;
+    const published = body.querySelector('#post_published').value === 'true';
+
+    if (!title){
+      msg.textContent = 'Informe um título.'; msg.style.color = '#b91c1c'; msg.style.display='block'; return;
+    }
+
+    const { data:{ user } } = await supabase.auth.getUser();
+    if (!user){ msg.textContent = 'Sessão expirada.'; msg.style.color='#b91c1c'; msg.style.display='block'; return; }
+
+    // upload (se houver)
+    let imageUrl = null;
+    try{
+      if (file) imageUrl = await uploadPostImage(file, user.id, venue.id);
+    }catch(e){
+      msg.textContent = 'Erro ao enviar imagem: ' + e.message;
+      msg.style.color = '#b91c1c'; msg.style.display='block'; return;
+    }
+
+    // grava o post
+    const { error: insErr } = await supabase.from('posts').insert([{
+      venue_id: venue.id,
+      title,
+      body: text || null,
+      image_url: imageUrl,
+      published
+    }]);
+
+    if (insErr){
+      msg.textContent = 'Erro ao salvar postagem: ' + insErr.message;
+      msg.style.color = '#b91c1c'; msg.style.display = 'block'; return;
+    }
+
+    msg.textContent = published ? 'Post publicado!' : 'Rascunho salvo.';
+    msg.style.color = '#065f46'; msg.style.display = 'block';
+
+    // recarrega posts visíveis
+    setTimeout(async ()=>{
+      await loadAndRenderPosts(venue);
+      closeModal();
+    }, 600);
+  });
+
+  openModal();
+}
+
+// ===== Buscar e renderizar posts
+async function fetchPosts(venueId, isOwner){
+  let q = supabase.from('posts')
+    .select('id, title, body, image_url, created_at, published')
+    .eq('venue_id', venueId)
+    .order('created_at', { ascending: false });
+
+  if (!isOwner) q = q.eq('published', true);
+
+  const { data, error } = await q;
+  if (error) {
+    console.error('Erro ao buscar posts:', error);
+    return []; // <- garante que retorna um array
+  }
+  return data || [];
+  console.log(posts); // <- evita undefined
+}
+
+async function loadAndRenderPosts(venue) {
+  const owner = await isOwner(venue);
+  let posts = await fetchPosts(venue.id, owner);
+  posts = posts || [];  // Garantir que seja um array vazio se não houver posts
+  renderPosts(posts);  // Agora chamamos a função de renderização com o array de posts
+}
+
+
+
+
+
 
 /** =========================
  *  OWNER CHECK
@@ -289,6 +424,25 @@ async function isOwner(venue){
   if (!user) return false;
   return user.id === venue.owner_id;
 }
+
+function openModal(){
+  const bd = document.getElementById('editModalBackdrop');
+  bd.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(){
+  const bd = document.getElementById('editModalBackdrop');
+  bd.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+}
+document.addEventListener('click', (e)=>{
+  // clique fora fecha
+  if (e.target?.id === 'editModalBackdrop') closeModal();
+});
+document.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape') closeModal();
+});
+
 
 /** =========================
  *  BOOT
@@ -313,14 +467,31 @@ async function isOwner(venue){
     renderFeatures(catalog, selectedIds);
 
     // 5) posts (placeholder - conecte na sua tabela quando tiver)
-    renderPosts([
-      // { title: "Combo Happy hour", image: "/assets/images/post1.png", text:"..." },
-    ]);
+    await loadAndRenderPosts(venue);
+
+    console.log('Venue carregado:', venue);
+    console.log('Owner:', await isOwner(venue));
 
     // 6) se for owner, monta painel de edição
     if (await isOwner(venue)){
-      buildEditPanel(venue, catalog, selectedIds);
+      // adiciona um botão "Editar" nas ações do cabeçalho
+      const actions = document.getElementById('actions');
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn ghost';
+      editBtn.textContent = 'Editar';
+      editBtn.style.marginLeft = '8px';
+      editBtn.onclick = () => buildEditModal(venue, catalog, selectedIds);
+      actions.appendChild(editBtn);
+
+    // adiciona um botão "Nova postagem" nas ações do cabeçalho
+      const postBtn = document.createElement('button');
+      postBtn.className = 'btn ghost';
+      postBtn.textContent = 'Nova postagem';
+      postBtn.style.marginLeft = '8px';
+      postBtn.onclick = () => buildPostModal(venue);
+      actions.appendChild(postBtn);
     }
+
   }catch(err){
     console.error(err);
     alert("Erro ao carregar o perfil: " + err.message);
