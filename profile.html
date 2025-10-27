@@ -45,6 +45,18 @@
       <div class="posts-grid" id="posts"></div>
     </section>
   </div>
+  <!-- Modal de Edição -->
+    <div id="editModalBackdrop" class="modal-backdrop" aria-hidden="true">
+      <div id="editModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+        <div class="modal-head">
+          <h2 id="editTitle">Editar informações</h2>
+          <button id="modalClose" class="modal-close" aria-label="Fechar">✕</button>
+        </div>
+        <div id="modalBody" class="modal-body">
+          <!-- conteúdo do formulário será injetado via JS -->
+        </div>
+      </div>
+    </div>
 
   <!-- SCRIPT NOVO -->
   <script type="module" src="./profile.js"></script>

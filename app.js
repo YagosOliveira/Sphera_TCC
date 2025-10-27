@@ -1,6 +1,6 @@
 // Dados de exemplo para Brasília
 const PLACES = [
-  { id: 1, nome: "Café do Ponto", categoria: "cafe", lat: -15.793889, lng: -47.882778, endereco: "Setor Comercial Sul, Brasília", nota: 4.5, preco: 65, features: ["wifi","happy_hour","musica_ao_vivo"] },
+  { id: 1, nome: "Café do Ponto", categoria: "cafe", lat: -15.8127502, lng: -47.8937088, endereco: "Setor Comercial Sul, Brasília", nota: 4.5, preco: 65, features: ["wifi","happy_hour","musica_ao_vivo"] },
   { id: 2, nome: "Parque da Cidade Sarah Kubitschek", categoria: "parque", lat: -15.798206, lng: -47.913692, endereco: "Eixo Monumental, Brasília", nota: 4.8, preco: 50, features: ["area_kids", "sinuca"] },
   { id: 3, nome: "Museu Nacional da República", categoria: "museu", lat: -15.800879, lng: -47.882250, endereco: "Setor Cultural Sul, Brasília", nota: 4.7, preco: 35, features: ["jogos", "happy_hour"] },
   { id: 4, nome: "Ernesto Café", categoria: "cafe", lat: -15.810704, lng: -47.882897, endereco: "Asa Sul, Brasília", nota: 4.4, preco: 40, features: ["wifi","musica_ao_vivo"] },
