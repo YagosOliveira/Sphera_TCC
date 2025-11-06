@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Meu Perfil • Sphera</title>
+  <style>
+    :root{ --bg:#f6f7f9; --surface:#fff; --border:#e5e7eb; --muted:#6b7280; --primary:#dc2626; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Arial,sans-serif;color:#0f172a}
+    .wrap{max-width:860px;margin:40px auto;padding:0 16px}
+    .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    h1{margin:0 0 12px}
+    label{display:block;margin:10px 0 6px;font-weight:600}
+    input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:inherit}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .btn{appearance:none;border:0;background:var(--primary);color:#fff;padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:700}
+    .chips{display:flex;flex-wrap:wrap;gap:10px}
+    .chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:999px;padding:8px 12px;background:#fff}
+    .bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:12px;align-items:center}
+    .avatar{width:64px;height:64px;border-radius:999px;object-fit:cover;border:1px solid var(--border)}
+    @media (max-width:680px){ .cols{grid-template-columns:1fr} }
+  </style>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    const supabase = createClient(
+      "https://ezptlmzxosdssqtwqzrg.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6cHRsbXp4b3Nkc3NxdHdxenJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMDkwNDgsImV4cCI6MjA3Mzg4NTA0OH0.rzKy_WfK0Ut6Vc9bm8IbnKTzsFpWgA6b6amW2xgqJec"
+    );
+
+    const $ = (s,p=document)=>p.querySelector(s);
+
+    let userId = null;
+    let featureCatalog = [];
+    let prefMap = new Map(); // slug -> weight
+
+    async function ensureAuth(){
+      const { data:{ user } } = await supabase.auth.getUser();
+      if (!user){ location.href = "/login.html"; return; }
+      userId = user.id;
+      $("#email").value = user.email || "";
+    }
+
+    async function loadProfile(){
+      const { data } = await supabase.from("profiles")
+        .select("name,birth_date,avatar_url,bio,home_lat,home_lng,max_distance_km,budget_level,fav_categories")
+        .eq("id", userId).single();
+      if (!data) return;
+      $("#name").value = data.name || "";
+      $("#birth").value = data.birth_date || "";
+      $("#bio").value = data.bio || "";
+      $("#home_lat").value = data.home_lat ?? "";
+      $("#home_lng").value = data.home_lng ?? "";
+      $("#max_dist").value = data.max_distance_km ?? 10;
+      $("#budget").value = data.budget_level ?? "";
+      $("#categories").value = (data.fav_categories || []).join(", ");
+      if (data.avatar_url){
+        $("#avatar").src = data.avatar_url;
+      }
+    }
+
+    async function loadFeatures(){
+      const { data } = await supabase.from("features").select("id,slug,label").order("label");
+      featureCatalog = data || [];
+      // montar chips com select de peso
+      const box = $("#prefs");
+      box.innerHTML = featureCatalog.map(f => `
+        <label class="chip">
+          <input type="checkbox" data-slug="${f.slug}" />
+          ${f.label}
+          <select data-slug="${f.slug}" style="border:1px solid #e5e7eb;border-radius:8px;padding:4px">
+            <option value="1">+1</option>
+            <option value="2">+2</option>
+            <option value="3">+3</option>
+            <option value="4">+4</option>
+            <option value="5">+5</option>
+          </select>
+        </label>
+      `).join("");
+      await loadUserPrefs();
+    }
+
+    async function loadUserPrefs(){
+      // traz (feature_id, weight) e marca os chips
+      const { data } = await supabase
+        .from("user_feature_prefs")
+        .select("feature_id, weight")
+        .eq("user_id", userId);
+      const byId = new Map((data||[]).map(r => [r.feature_id, r.weight]));
+      prefMap.clear();
+
+      featureCatalog.forEach(f => {
+        const checked = byId.has(f.id);
+        const w = byId.get(f.id) || 1;
+        const chk = $(`input[type=checkbox][data-slug="${f.slug}"]`);
+        const sel = $(`select[data-slug="${f.slug}"]`);
+        if (chk){ chk.checked = checked; }
+        if (sel){ sel.value = String(w); }
+        if (checked) prefMap.set(f.slug, w);
+      });
+    }
+
+    async function saveProfile(){
+      const payload = {
+        name: $("#name").value.trim() || null,
+        birth_date: $("#birth").value || null,
+        bio: $("#bio").value.trim() || null,
+        home_lat: $("#home_lat").value ? Number($("#home_lat").value) : null,
+        home_lng: $("#home_lng").value ? Number($("#home_lng").value) : null,
+        max_distance_km: $("#max_dist").value ? Number($("#max_dist").value) : 10,
+        budget_level: $("#budget").value ? Number($("#budget").value) : null,
+        fav_categories: $("#categories").value
+          ? $("#categories").value.split(",").map(s=>s.trim()).filter(Boolean)
+          : null
+      };
+      const { error } = await supabase.from("profiles").update(payload).eq("id", userId);
+      if (error) return alert("Erro ao salvar perfil: " + error.message);
+      alert("Perfil salvo!");
+    }
+
+    async function savePrefs(){
+      // lê cada chip e salva via upsert (chame a RPC por slug ou manipule direto por id)
+      const ops = [];
+      featureCatalog.forEach(f => {
+        const chk = $(`input[type=checkbox][data-slug="${f.slug}"]`);
+        const sel = $(`select[data-slug="${f.slug}"]`);
+        const w = Number(sel?.value || 1);
+        if (chk?.checked){
+          // upsert por id
+          ops.push(
+            supabase.from("user_feature_prefs").upsert({
+              user_id: userId, feature_id: f.id, weight: w
+            })
+          );
+        } else {
+          // se existir e desmarcou, remove
+          ops.push(
+            supabase.from("user_feature_prefs")
+              .delete().eq("user_id", userId).eq("feature_id", f.id)
+          );
+        }
+      });
+      await Promise.all(ops);
+      alert("Preferências salvas!");
+    }
+
+    // pegar geolocalização do navegador
+    $("#btnGeo")?.addEventListener("click", ()=>{
+      if (!navigator.geolocation) return alert("Geolocalização indisponível.");
+      navigator.geolocation.getCurrentPosition(pos=>{
+        $("#home_lat").value = pos.coords.latitude.toFixed(6);
+        $("#home_lng").value = pos.coords.longitude.toFixed(6);
+      }, err=>{
+        alert("Não foi possível obter sua localização.");
+      }, { enableHighAccuracy:true, maximumAge:30000, timeout:10000 });
+    });
+
+    // avatar (opcional, se quiser implementar bucket 'avatars')
+    // document.getElementById('avatarFile').addEventListener('change', async (e)=> { ... });
+
+    // fluxo
+    (async function boot(){
+      await ensureAuth();
+      await Promise.all([loadProfile(), loadFeatures()]);
+      $("#btnSave").addEventListener("click", saveProfile);
+      $("#btnSavePrefs").addEventListener("click", savePrefs);
+    })();
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="bar">
+        <h1>Meu perfil</h1>
+        <button class="btn" id="btnSave">Salvar</button>
+      </div>
+
+      <div class="row">
+        <img id="avatar" class="avatar" src="" alt="">
+        <!-- <input type="file" id="avatarFile" accept="image/*" /> -->
+        <div class="muted">Foto de perfil (opcional)</div>
+      </div>
+
+      <div class="cols" style="margin-top:12px">
+        <div>
+          <label>Nome</label>
+          <input id="name" />
+        </div>
+        <div>
+          <label>E-mail</label>
+          <input id="email" disabled />
+        </div>
+      </div>
+
+      <div class="cols">
+        <div>
+          <label>Data de nascimento</label>
+          <input id="birth" type="date" />
+        </div>
+        <div>
+          <label>Orçamento (1=baixo, 5=alto)</label>
+          <input id="budget" type="number" min="1" max="5" step="1" />
+        </div>
+      </div>
+
+      <label>Bio</label>
+      <textarea id="bio" rows="3" placeholder="Fale um pouco sobre você..."></textarea>
+
+      <div class="cols">
+        <div>
+          <label>Latitude</label>
+          <input id="home_lat" type="number" step="0.000001" />
+        </div>
+        <div>
+          <label>Longitude</label>
+          <input id="home_lng" type="number" step="0.000001" />
+        </div>
+      </div>
+
+      <div class="cols">
+        <div>
+          <label>Raio máximo (km)</label>
+          <input id="max_dist" type="number" min="1" step="1" />
+        </div>
+        <div>
+          <label>Categorias favoritas (separadas por vírgula)</label>
+          <input id="categories" placeholder="bar, pizza, café..." />
+        </div>
+      </div>
+
+      <button class="btn" id="btnGeo" style="margin-top:10px;background:#111827">Usar minha localização atual</button>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="bar">
+        <h2 style="margin:0">Preferências (diferenciais)</h2>
+        <button class="btn" id="btnSavePrefs">Salvar preferências</button>
+      </div>
+      <p class="muted" style="margin-top:-6px">Marque o que você mais gosta e ajuste o peso (+1 a +5).</p>
+      <div id="prefs" class="chips"></div>
+    </div>
+  </div>
+</body>
+</html>
