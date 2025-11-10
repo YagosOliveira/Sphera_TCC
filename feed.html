@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Feed • Sphera</title>
 
+  <!-- Supabase client -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    // >>>> troque por suas credenciais
+    const SUPABASE_URL = "https://ezptlmzxosdssqtwqzrg.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6cHRsbXp4b3Nkc3NxdHdxenJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMDkwNDgsImV4cCI6MjA3Mzg4NTA0OH0.rzKy_WfK0Ut6Vc9bm8IbnKTzsFpWgA6b6amW2xgqJec";
+    window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  </script>
   <style>
     :root{
       --bg:#f6f7f9; --surface:#fff; --muted:#6b7280; --border:#e5e7eb;
@@ -84,27 +92,82 @@
     @media (max-width:720px){
       .post-body{ grid-template-columns:1fr; }
     }
+    .navbar{
+    position:sticky; top:0; z-index:30;
+    background:#dc2626; color:#fff;
+    box-shadow:0 1px 0 rgba(0,0,0,.06);
+    min-height:64px;
+  }
+  .navbar .nav-wrap{
+    max-width:1120px; margin:0 auto; padding:0 16px;
+    height:64px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .navbar .brand{
+    font-weight:800; letter-spacing:.04em; font-size:18px;
+    color:#fff; text-decoration:none;
+  }
+
+  /* reserva espaço para o badge no meio */
+  .navbar .nav-center{
+    display:flex; gap:94px;
+    padding:0 96px;                     /* << mais espaço lateral pro badge */
+  }
+  .navbar .nav-link{
+    color:#fff; text-decoration:none; opacity:.9; padding:8px 0;
+    border-bottom:2px solid transparent; font-weight:700;
+  }
+  .navbar .nav-link.is-active{ opacity:1; border-color:#fff; }
+
+  .navbar .nav-right{ display:flex; align-items:center; gap:12px; }
+  .navbar .nav-login{
+    background:rgba(255,255,255,.08);
+    padding:8px 12px; border-radius:10px;
+    color:#fff; font-weight:600; text-decoration:none;
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .navbar .nav-avatar{
+    width:28px; height:28px; border-radius:999px; background:#fff; color:#dc2626;
+    display:inline-flex; align-items:center; justify-content:center; font-weight:800;
+  }
+
+  /* badge central */
+  .navbar .nav-badge{
+    width:64px; height:64px; border-radius:999px;
+    background:#dc2626;                 /* << mesma cor da barra */
+    border:2px solid #dc2626;
+    display:flex; align-items:center; justify-content:center;
+    margin:-60px auto 0;                 /* “pendura” 32px sobre a barra */
+    position:relative; z-index:1;
+    box-shadow:0 6px 18px rgba(0,0,0,.12);
+  }
+  .navbar .nav-badge img{
+    width:30px; height:30px; display:block;
+    /* deixa QUALQUER imagem branca */
+  }
+/* responsivo */
+@media (max-width:720px){
+  .navbar .nav-center{ gap:18px; padding:0 84px; }
+  .navbar .nav-badge{ width:56px; height:56px; margin:-28px auto 0; }
+  .navbar .nav-badge img{ width:26px; height:26px; }
+}
   </style>
 
-  <!-- Supabase client -->
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-    // >>>> troque por suas credenciais
-    const SUPABASE_URL = "https://ezptlmzxosdssqtwqzrg.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6cHRsbXp4b3Nkc3NxdHdxenJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMDkwNDgsImV4cCI6MjA3Mzg4NTA0OH0.rzKy_WfK0Ut6Vc9bm8IbnKTzsFpWgA6b6amW2xgqJec";
-    window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  </script>
+  
 </head>
 <body>
-
-  <div class="topbar">
-    <div class="wrap">
-      <a href="/">SPHERA</a>
-      <nav style="display:flex; gap:16px;">
-        <a href="/menu.html" class="muted">Menu</a>
-        <a href="/feed.html" style="font-weight:800">Feed</a>
-        <a href="/login.html" class="muted">Login</a>
+  <div class="navbar">
+  <div class="nav-wrap" role="navigation" aria-label="Barra de navegação">
+      <a class="brand" href="/">SPHERA</a>
+      <nav class="nav-center">
+        <a href="/index.html" class="nav-link" data-key="menu">Mapa</a>
+        <a href="/feed.html" class="nav-link" data-key="feed">Feed</a>
       </nav>
+      <div class="nav-right">
+        <a class="nav-login" href="/login.html">Login</a>
+      </div>
+  </div>
+    <div class="nav-badge">
+      <img src="./assets/images/logo.png" alt="Sphera">
     </div>
   </div>
 
@@ -112,40 +175,37 @@
   <div class="loadmore"><button class="btn" id="btnMore">Carregar mais</button></div>
 
   <script type="module">
-    /* -------- utils -------- */
-    const $ = (s, p=document) => p.querySelector(s);
-    const feedEl   = $('#feed');
-    const btnMore  = $('#btnMore');
+      const $ = (s, p=document) => p.querySelector(s);
+      const feedEl  = $('#feed');
+      const btnMore = $('#btnMore');
 
-    function timeAgo(iso){
-      if(!iso) return '';
-      const d = new Date(iso);
-      const diff = (Date.now() - d.getTime())/1000;
-      if(diff < 60)   return 'agora pouco';
-      if(diff < 3600) return `${Math.floor(diff/60)} min`;
-      if(diff < 86400) return `${Math.floor(diff/3600)} h`;
-      return d.toLocaleDateString();
-    }
+      function timeAgo(iso){
+        if(!iso) return '';
+        const d = new Date(iso);
+        const diff = (Date.now() - d.getTime())/1000;
+        if(diff < 60) return 'agora pouco';
+        if(diff < 3600) return `${Math.floor(diff/60)} min`;
+        if(diff < 86400) return `${Math.floor(diff/3600)} h`;
+        return d.toLocaleDateString();
+      }
 
-    /* -------- data/pagination -------- */
-    const PAGE_SIZE = 9;
-    let page = 0, loading = false, finished = false;
+      const PAGE_SIZE = 9;
+      let page = 0, loading = false, finished = false;
 
-    function showNoPosts(){
+      function showNoPosts(){
         if (!document.getElementById('noPostsMsg')) {
-        const p = document.createElement('p');
-        p.id = 'noPostsMsg';
-        p.className = 'muted';
-        p.textContent = 'Ainda não há postagens.';
-        feedEl.appendChild(p);
+          const p = document.createElement('p');
+          p.id = 'noPostsMsg';
+          p.className = 'muted';
+          p.textContent = 'Ainda não há postagens.';
+          feedEl.appendChild(p);
         }
-    }
-    function hideNoPosts(){
-        const n = document.getElementById('noPostsMsg');
-        if (n) n.remove();
-    }
+      }
+      function hideNoPosts(){
+        document.getElementById('noPostsMsg')?.remove();
+      }
 
-    async function fetchPage(){
+      async function fetchPage(){
         if (loading || finished) return [];
         loading = true;
 
@@ -153,71 +213,157 @@
         const to   = from + PAGE_SIZE - 1;
 
         const { data, error } = await supabase
-        .from('posts')
-        .select(`id,title,body,image_url,created_at,
-                venue:venue_id (id,name,slug,logo_url)`)
-        .eq('published', true)
-        .order('created_at', { ascending:false })
-        .range(from, to);
+          .from('posts')
+          .select(`id,title,body,image_url,created_at,
+                  venue:venue_id (id,name,slug,logo_url)`)
+          .eq('published', true)
+          .order('created_at', { ascending:false })
+          .range(from, to);
 
         loading = false;
-        if (error) { console.error(error); return []; }
+        if (error) { console.error('[feed] erro:', error); return []; }
         if (!data || data.length < PAGE_SIZE) finished = true;
         page++;
         return data || [];
-    }
+      }
 
-    function renderPosts(posts){
+      function renderPosts(posts){
         if (!posts || posts.length === 0) {
-        // só mostra o placeholder se ainda não há nada na tela
-        if (feedEl.children.length === 0) showNoPosts();
-        return;
+          if (feedEl.children.length === 0) showNoPosts();
+          return;
         }
-
-        // vieram posts => some com o placeholder
         hideNoPosts();
 
-        posts.forEach(p=>{
-        const v = p.venue || {};
-        const a = document.createElement('article');
-        a.className = 'post-card';
-        a.innerHTML = `
+        for (const p of posts){
+          const v = p.venue || {};
+          const a = document.createElement('article');
+          a.className = 'post-card';
+          a.innerHTML = `
             <div class="post-head">
-            <img class="avatar" src="${v.logo_url || ''}" alt="">
-            <div class="venue-title">
+              <img class="avatar" src="${v.logo_url || ''}" alt="">
+              <div class="venue-title">
                 <a href="/profile.html?slug=${encodeURIComponent(v.slug || '')}">
-                ${v.name || 'Estabelecimento'}
+                  ${v.name || 'Estabelecimento'}
                 </a>
                 <small class="muted">${timeAgo(p.created_at)}</small>
-            </div>
+              </div>
             </div>
             <div class="post-body">
-            ${p.image_url
+              ${p.image_url
                 ? `<div class="post-img" style="background-image:url('${p.image_url}')"></div>`
                 : `<div class="post-img" style="background:#f1f5f9"></div>`}
-            <div class="post-text">
+              <div class="post-text">
                 <div class="post-title">${p.title || ''}</div>
                 <div>${p.body || ''}</div>
-            </div>
+              </div>
             </div>`;
-        feedEl.appendChild(a);
-        });
-    }
+          feedEl.appendChild(a);
+        }
+      }
 
-    async function loadMore(){
+      async function loadMore(){
         const rows = await fetchPage();
         renderPosts(rows);
         if (finished) btnMore.style.display = 'none';
-    }
+      }
 
-    // boot
-    loadMore();
-    btnMore.addEventListener('click', loadMore);
+      // ---- NOVO: completa a tela automaticamente
+      async function ensureFilled(){
+        // evita loop infinito com um limite de iterações
+        let guard = 8;
+        while (!finished && document.documentElement.scrollHeight < (window.innerHeight - 120) && guard-- > 0) {
+          await loadMore();
+          // aguarda um frame para recalcular a altura
+          await new Promise(r => requestAnimationFrame(r));
+        }
+      }
 
-    const io = new IntersectionObserver(entries=>{
-        entries.forEach(e=>{ if (e.isIntersecting) loadMore(); });
-    }, { rootMargin: '600px' });
-    io.observe(btnMore);
-    </script>
+      // ---- IntersectionObserver (continua útil pra rolagem)
+      let io;
+      function attachIO(){
+        io?.disconnect();
+        io = new IntersectionObserver(entries=>{
+          if (entries.some(e => e.isIntersecting)) loadMore();
+        }, { rootMargin: '300px 0px', threshold: 0.01 });
+        io.observe(btnMore);
+      }
+
+      // ---- BOOT
+      document.addEventListener('DOMContentLoaded', async ()=>{
+        await loadMore();     // sempre carrega 1 página
+        await ensureFilled(); // e completa a tela se precisar
+        attachIO();
+      });
+
+      // clique manual
+      btnMore.addEventListener('click', async ()=>{
+        await loadMore();
+        await ensureFilled();
+      });
+
+      // se a janela mudar (ou navbar reflow), revalida
+      window.addEventListener('resize', async ()=>{
+        await ensureFilled();
+        attachIO();
+      });
+
+      async function updateRight(host){
+        const right = host.querySelector(".nav-right");
+        if (!right) return;
+
+        const supabase = window.supabase;
+        if (!supabase) { // sem supabase → mostra Login
+          right.innerHTML = `<a class="nav-login" href="/login.html">Login</a>`;
+          return;
+        }
+
+        const { data: { user } = {} } = await supabase.auth.getUser();
+        if (!user) {
+          right.innerHTML = `<a class="nav-login" href="/login.html">Login</a>`;
+          return;
+        }
+
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("role,name")
+            .eq("id", user.id)
+            .single();
+          const role = (data?.role || "USER").toUpperCase();
+          const initial = (data?.name?.trim()?.[0] || user.email?.[0] || "U").toUpperCase();
+          const profileLink = role === "OWNER" ? "/owner.html" : "/user.html";
+          right.innerHTML = `<a class="nav-login" href="${profileLink}" title="Seu perfil"><span class="nav-avatar">${initial}</span></a>`;
+        } catch {
+          right.innerHTML = `<a class="nav-login" href="/user.html"><span class="nav-avatar">U</span></a>`;
+        }
+      }
+      // chama updateRight assim que o supabase existir (ou já de cara)
+      function tryUpdateRight(host){
+        if (window.supabase) return updateRight(host);
+        // espera um pouco pelo client do head (2s máx)
+        let tries = 0;
+        const id = setInterval(() => {
+          tries++;
+          if (window.supabase || tries > 20){ // 20 * 100ms = 2s
+            clearInterval(id);
+            updateRight(host);
+          }
+        }, 100);
+      }
+
+      // escuta mudanças de auth quando disponível
+      function startAuthWatcher(host){
+        if (!window.supabase) {
+          // tenta de novo em 500ms
+          setTimeout(() => startAuthWatcher(host), 500);
+          return;
+        }
+        window.supabase.auth.onAuthStateChange(() => updateRight(host));
+      }
+      
+  </script>
+
+
+  
 </body>
 </html>
