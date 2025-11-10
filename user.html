@@ -171,6 +171,9 @@
   </script>
 </head>
 <body>
+  <header class="navbar">
+      <div id="app-nav"></div>
+  </header>
   <div class="wrap">
     <div class="card">
       <div class="bar">
@@ -243,5 +246,9 @@
       <div id="prefs" class="chips"></div>
     </div>
   </div>
+  <script type="module">
+    import { mountNav } from "./nav.js";
+    mountNav({ active: "", logoSrc: "./assets/images/logo.png", target: "#app-nav" });
+  </script>
 </body>
 </html>
