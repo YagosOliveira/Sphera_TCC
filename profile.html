@@ -18,20 +18,28 @@
   </script>
 </head>
 <body>
+  
   <div class="navbar">
     <div class="nav-wrap" role="navigation" aria-label="Barra de navegação">
-        <a class="brand" href="/">SPHERA</a>
-        <nav class="nav-center">
-          <a href="/index.html" class="nav-link" data-key="menu">Mapa</a>
-          <a href="/feed.html" class="nav-link" data-key="feed">Feed</a>
-        </nav>
-        <div class="nav-right">
-          <a class="nav-login" href="/login.html">Login</a>
-        </div>
-    </div>
-      <div class="nav-badge">
-        <img src="./assets/images/logo.png" alt="Sphera">
+      <a class="brand" href="/">SPHERA</a>
+
+      <!-- NAV central com o badge inline entre os links -->
+      <nav class="nav-center">
+        <a href="/index.html" class="nav-link" data-key="menu">Mapa</a>
+
+        <!-- badge inline -->
+        <span class="nav-badge nav-badge--inline" aria-hidden="true">
+          <img src="./assets/images/logo.png" alt="">
+        </span>
+
+        <a href="/feed.html" class="nav-link" data-key="feed">Feed</a>
+      </nav>
+
+      <div class="nav-right">
+        <button id="btnPerfil" class="nav-pill" title="Seu perfil">Perfil</button>
+        <a class="nav-login" href="/login.html">Login</a>
       </div>
+    </div>
   </div>
   <!-- Hero -->
   <div class="profile-hero" id="hero"></div>

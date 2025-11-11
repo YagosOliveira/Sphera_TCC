@@ -48,64 +48,118 @@
     .btn-primary{ background:#2b6cb0; color:#fff; }
     .btn-secondary{ background:#edf2f7; color:#1a202c; }
     .btn-ghost{ background:transparent; color:#4a5568; }
+
+    /* Layout base da navbar (pode manter o que já tinha) */
     .navbar{
-      position:sticky; top:0; z-index:30;
-      background:#dc2626; color:#fff;
-      box-shadow:0 1px 0 rgba(0,0,0,.06);
-      min-height:64px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: #dc2626;
+      color: #fff;
+      box-shadow: 0 1px 0 rgba(0,0,0,.06);
+      min-height: 64px;
+      padding-bottom: 0;        /* não precisamos mais de espaço extra */
     }
     .navbar .nav-wrap{
-      max-width:1120px; margin:0 auto; padding:0 16px;
-      height:64px; display:flex; align-items:center; justify-content:space-between;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 16px;
+      height: 64px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr; /* brand | center | right */
+      align-items: center;
     }
     .navbar .brand{
-      font-weight:800; letter-spacing:.04em; font-size:18px;
-      color:#fff; text-decoration:none;
+      font-weight: 800;
+      letter-spacing: .04em;
+      font-size: 18px;
+      color: #fff;
+      text-decoration: none;
+      justify-self: start;
     }
 
-    /* reserva espaço para o badge no meio */
+    /* links centrais */
     .navbar .nav-center{
-      display:flex; gap:94px;
-      padding:0 96px;                     /* << mais espaço lateral pro badge */
+      justify-self: center;
+      display: flex;
+      align-items: center;
+      gap: 22px;                 /* distância entre link e badge */
     }
     .navbar .nav-link{
-      color:#fff; text-decoration:none; opacity:.9; padding:8px 0;
-      border-bottom:2px solid transparent; font-weight:700;
+      color: #fff;
+      text-decoration: none;
+      opacity: .95;
+      padding: 8px 0;
+      border-bottom: 2px solid transparent;
+      font-weight: 700;
     }
-    .navbar .nav-link.is-active{ opacity:1; border-color:#fff; }
+    .navbar .nav-link:hover{ opacity: 1; }
+    .navbar .nav-link.is-active{ border-color: #fff; }
 
-    .navbar .nav-right{ display:flex; align-items:center; gap:12px; }
-    .navbar .nav-login{
-      background:rgba(255,255,255,.08);
-      padding:8px 12px; border-radius:10px;
-      color:#fff; font-weight:600; text-decoration:none;
+    /* lado direito */
+    .navbar .nav-right{
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-pill{
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.20);
+      color:#fff;
+      font-weight:600;
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
       display:inline-flex; align-items:center; gap:8px;
+      transition: background .15s ease, transform .05s ease, border-color .15s ease;
     }
-    .navbar .nav-avatar{
-      width:28px; height:28px; border-radius:999px; background:#fff; color:#dc2626;
-      display:inline-flex; align-items:center; justify-content:center; font-weight:800;
+    .nav-pill:hover{ background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.30); }
+    .nav-pill:active{ transform: translateY(1px); }
+    .navbar .nav-login{
+      background: rgba(255,255,255,.10);
+      padding: 8px 12px;
+      border-radius: 10px;
+      color: #fff;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background .15s ease, transform .05s ease;
     }
+    .navbar .nav-login:hover{ background: rgba(255,255,255,.16); }
+    .navbar .nav-login:active{ transform: translateY(1px); }
 
-    /* badge central */
-    .navbar .nav-badge{
-      width:64px; height:64px; border-radius:999px;
-      background:#dc2626;                 /* << mesma cor da barra */
-      border:2px solid #dc2626;
-      display:flex; align-items:center; justify-content:center;
-      margin:-60px auto 0;                 /* “pendura” 32px sobre a barra */
-      position:relative; z-index:1;
-      box-shadow:0 6px 18px rgba(0,0,0,.12);
+    /* ===== Badge inline entre os links ===== */
+    .navbar .nav-badge--inline{
+      width: 48px;               /* tamanho do círculo */
+      height: 48px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.06);   /* leve realce; opcional */
+      border: 2px solid rgba(150, 22, 22, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 18px rgba(0,0,0,.12);
+      pointer-events: none;      /* não captura cliques; links continuam clicáveis */
     }
-    .navbar .nav-badge img{
-      width:30px; height:30px; display:block;
-      /* deixa QUALQUER imagem branca */
+    .navbar .nav-badge--inline img{
+      width: 24px;
+      height: 24px;
+      display: block;
+        /* deixa a logo branca */
     }
 
     /* responsivo */
-    @media (max-width:720px){
-      .navbar .nav-center{ gap:18px; padding:0 84px; }
-      .navbar .nav-badge{ width:56px; height:56px; margin:-28px auto 0; }
-      .navbar .nav-badge img{ width:26px; height:26px; }
+    @media (max-width: 720px){
+      .navbar .nav-center{ gap: 16px; }
+      .navbar .nav-badge--inline{
+      width: 44px; height: 44px;
+      }
+      .navbar .nav-badge--inline img{
+        width: 22px; height: 22px;
+      }
     }
   </style>
 </head>
@@ -114,26 +168,32 @@
 
   <div class="navbar">
     <div class="nav-wrap" role="navigation" aria-label="Barra de navegação">
-        <a class="brand" href="/">SPHERA</a>
-        <nav class="nav-center">
-          <a href="/index.html" class="nav-link" data-key="menu">Mapa</a>
-          <a href="/feed.html" class="nav-link" data-key="feed">Feed</a>
-        </nav>
-        <div class="nav-right">
-          <a class="nav-login" href="/login.html">Login</a>
-        </div>
-    </div>
-      <div class="nav-badge">
-        <img src="./assets/images/logo.png" alt="Sphera">
+      <a class="brand" href="/">SPHERA</a>
+
+      <!-- NAV central com o badge inline entre os links -->
+      <nav class="nav-center">
+        <a href="/index.html" class="nav-link" data-key="menu">Mapa</a>
+
+        <!-- badge inline -->
+        <span class="nav-badge nav-badge--inline" aria-hidden="true">
+          <img src="./assets/images/logo.png" alt="">
+        </span>
+
+        <a href="/feed.html" class="nav-link" data-key="feed">Feed</a>
+      </nav>
+
+      <div class="nav-right">
+        <button id="btnPerfil" class="nav-pill" title="Seu perfil">Perfil</button>
+        <a class="nav-login" href="/login.html">Login</a>
       </div>
+    </div>
   </div>
+
   <a class="skip-link" href="#lista">Pular para lista</a>
 
   <main class="app" role="main">
-    <!-- Coluna do mapa -->
     <div id="map" aria-label="Mapa"></div>
 
-    <!-- Coluna da lista -->
     <aside class="panel" aria-label="Lista de lugares">
       <header class="panel-header">
         <form class="search" id="formBusca" role="search" autocomplete="off">
@@ -186,5 +246,53 @@
 
   <!-- Seu JS -->
   <script defer src="app.js"></script>
+
+  <!-- Script PERFIL (somente lógica do botão) -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // use as MESMAS credenciais que você usa no projeto
+    const SUPABASE_URL = "https://ezptlmzxosdssqtwqzrg.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6cHRsbXp4b3Nkc3NxdHdxenJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMDkwNDgsImV4cCI6MjA3Mzg4NTA0OH0.rzKy_WfK0Ut6Vc9bm8IbnKTzsFpWgA6b6amW2xgqJec";
+
+    // Reutiliza client se já existir; senão cria.
+    const supabase = window.supabase ?? createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    window.supabase = supabase;
+
+    const btnProfile = document.getElementById('btnPerfil');
+
+    btnProfile?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // Sem sessão → manda pro login
+        if (!user) {
+          location.href = '/login.html';
+          return;
+        }
+
+        // Busca a role no profiles
+        const { data: prof, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.warn('[perfil] erro buscando role, redirecionando para /user.html', error);
+          location.href = '/user.html';
+          return;
+        }
+
+        const role = (prof?.role || 'USER').toUpperCase();
+        location.href = role === 'OWNER' ? '/owner.html' : '/user.html';
+      } catch (err) {
+        console.error('[perfil] erro inesperado', err);
+        // fallback seguro
+        location.href = '/user.html';
+      }
+    });
+  </script>
 </body>
 </html>

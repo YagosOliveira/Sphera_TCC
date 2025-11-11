@@ -21,6 +21,119 @@
     .muted{color:var(--muted)}
     .row{display:flex;gap:12px;align-items:center}
     .avatar{width:64px;height:64px;border-radius:999px;object-fit:cover;border:1px solid var(--border)}
+    
+    /* Layout base da navbar (pode manter o que já tinha) */
+    .navbar{
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: #dc2626;
+      color: #fff;
+      box-shadow: 0 1px 0 rgba(0,0,0,.06);
+      min-height: 64px;
+      padding-bottom: 0;        /* não precisamos mais de espaço extra */
+    }
+    .navbar .nav-wrap{
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 16px;
+      height: 64px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr; /* brand | center | right */
+      align-items: center;
+    }
+    .navbar .brand{
+      font-weight: 800;
+      letter-spacing: .04em;
+      font-size: 18px;
+      color: #fff;
+      text-decoration: none;
+      justify-self: start;
+    }
+
+    /* links centrais */
+    .navbar .nav-center{
+      justify-self: center;
+      display: flex;
+      align-items: center;
+      gap: 22px;                 /* distância entre link e badge */
+    }
+    .navbar .nav-link{
+      color: #fff;
+      text-decoration: none;
+      opacity: .95;
+      padding: 8px 0;
+      border-bottom: 2px solid transparent;
+      font-weight: 700;
+    }
+    .navbar .nav-link:hover{ opacity: 1; }
+    .navbar .nav-link.is-active{ border-color: #fff; }
+
+    /* lado direito */
+    .navbar .nav-right{
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-pill{
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.20);
+      color:#fff;
+      font-weight:600;
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition: background .15s ease, transform .05s ease, border-color .15s ease;
+    }
+    .nav-pill:hover{ background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.30); }
+    .nav-pill:active{ transform: translateY(1px); }
+    .navbar .nav-login{
+      background: rgba(255,255,255,.10);
+      padding: 8px 12px;
+      border-radius: 10px;
+      color: #fff;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background .15s ease, transform .05s ease;
+    }
+    .navbar .nav-login:hover{ background: rgba(255,255,255,.16); }
+    .navbar .nav-login:active{ transform: translateY(1px); }
+
+    /* ===== Badge inline entre os links ===== */
+    .navbar .nav-badge--inline{
+      width: 48px;               /* tamanho do círculo */
+      height: 48px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.06);   /* leve realce; opcional */
+      border: 2px solid rgba(150, 22, 22, 0.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 18px rgba(0,0,0,.12);
+      pointer-events: none;      /* não captura cliques; links continuam clicáveis */
+    }
+    .navbar .nav-badge--inline img{
+      width: 24px;
+      height: 24px;
+      display: block;
+        /* deixa a logo branca */
+    }
+
+    /* responsivo */
+    @media (max-width: 720px){
+      .navbar .nav-center{ gap: 16px; }
+      .navbar .nav-badge--inline{
+      width: 44px; height: 44px;
+      }
+      .navbar .nav-badge--inline img{
+        width: 22px; height: 22px;
+      }
+    }
     @media (max-width:680px){ .cols{grid-template-columns:1fr} }
   </style>
 
@@ -171,9 +284,29 @@
   </script>
 </head>
 <body>
-  <header class="navbar">
-      <div id="app-nav"></div>
-  </header>
+  
+  <div class="navbar">
+    <div class="nav-wrap" role="navigation" aria-label="Barra de navegação">
+      <a class="brand" href="/">SPHERA</a>
+
+      <!-- NAV central com o badge inline entre os links -->
+      <nav class="nav-center">
+        <a href="/index.html" class="nav-link" data-key="menu">Mapa</a>
+
+        <!-- badge inline -->
+        <span class="nav-badge nav-badge--inline" aria-hidden="true">
+          <img src="./assets/images/logo.png" alt="">
+        </span>
+
+        <a href="/feed.html" class="nav-link" data-key="feed">Feed</a>
+      </nav>
+
+      <div class="nav-right">
+        <button id="btnPerfil" class="nav-pill" title="Seu perfil">Perfil</button>
+        <a class="nav-login" href="/login.html">Login</a>
+      </div>
+    </div>
+  </div>
   <div class="wrap">
     <div class="card">
       <div class="bar">
@@ -246,9 +379,5 @@
       <div id="prefs" class="chips"></div>
     </div>
   </div>
-  <script type="module">
-    import { mountNav } from "./nav.js";
-    mountNav({ active: "", logoSrc: "./assets/images/logo.png", target: "#app-nav" });
-  </script>
 </body>
 </html>
