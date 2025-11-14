@@ -133,50 +133,94 @@ body{
 .panel-list::-webkit-scrollbar{width:8px}
 .panel-list::-webkit-scrollbar-thumb{background:#cfcfd6;border-radius:8px}
 
-/* ---------- Cards (estilo “feed” da direita) ---------- */
-.card{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:8px 10px;
-  padding:10px;
-  border:1px solid var(--border);
-  border-radius:12px;
-  background:#fff;
-  box-shadow:var(--shadow);
-  margin-bottom:12px;
-  cursor:pointer;
-  transition:transform .06s ease, box-shadow .06s ease, border-color .15s ease;
-}
-.card:hover{ transform:translateY(-1px); box-shadow:0 10px 28px rgba(0,0,0,.10) }
-.card.active{ outline:2px solid var(--brand); outline-offset:0 }
+/* ---------- Cards (lista de lugares) ---------- */
 
-/* capa grande no topo do card (se houver img dentro) */
-.card img, .card .cover{
-  grid-column:1/-1;
-  width:100%; height:140px; object-fit:cover;
-  border-radius:10px;
+.panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* título e meta em linha, com “badge” à direita */
-.card h3{
-  margin:0; font-size:15px; line-height:1.25; color:#141821;
-}
-.meta{ color:var(--muted); font-size:12px }
-.badge{
-  justify-self:end; align-self:start;
-  font-size:12px; padding:4px 8px;
-  border-radius:999px;
-  background:var(--brand-weak);
-  color:#9b1111;
-  border:1px solid var(--brand-border);
+/* card em linha, com avatar à esquerda */
+.card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
-/* pequenas tags dentro do card (se usar) */
-.card .tags{display:flex;gap:6px;flex-wrap:wrap}
-.card .tag{
-  font-size:11px; padding:4px 8px; border-radius:999px;
-  border:1px solid var(--border); background:#fff; color:#4b5563
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
 }
+
+.card-media {
+  flex: 0 0 56px;
+}
+
+.card-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #e5e7eb;
+}
+
+.card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.card .badge {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.card .meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.tags {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
 
 /* ---------- Responsivo ---------- */
 @media (max-width:980px){

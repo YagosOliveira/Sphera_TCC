@@ -4,6 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mapa e Lista de Lugares</title>
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    // TODO: em produção, injete a anon key via variável de ambiente
+    window.supabase = createClient(
+      "https://ezptlmzxosdssqtwqzrg.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6cHRsbXp4b3Nkc3NxdHdxenJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMDkwNDgsImV4cCI6MjA3Mzg4NTA0OH0.rzKy_WfK0Ut6Vc9bm8IbnKTzsFpWgA6b6amW2xgqJec"
+    );
+  </script>
 
   <!-- Leaflet (Mapa) -->
   <link
@@ -249,7 +257,6 @@
 
   <!-- Script PERFIL (somente lógica do botão) -->
   <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
     // use as MESMAS credenciais que você usa no projeto
     const SUPABASE_URL = "https://ezptlmzxosdssqtwqzrg.supabase.co";
