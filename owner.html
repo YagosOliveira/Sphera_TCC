@@ -115,6 +115,19 @@
   preview(logoFile,  logoPreview);
   preview(coverFile, coverPreview);
 
+  // helper para gerar slug a partir do nome
+  function makeSlug(str) {
+    return str
+      ?.toString()
+      .normalize("NFD")                    // remove acentos
+      .replace(/[\u0300-\u036f]/g, "")     // caracteres combinantes
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")        // remove caracteres estranhos
+      .replace(/\s+/g, "-")                // espaços -> hífen
+      .replace(/-+/g, "-");                // vários hífens -> um só
+  }
+
   // ====== AUTH ======
   const { data:{ user } } = await supabase.auth.getUser();
   if (!user) {
@@ -147,7 +160,7 @@
   {
     const { data: v } = await supabase
       .from('venues')
-      .select('id, name, category, avg_price, status, rating, lat, lng, address, image_url, logo_url, cover_url')
+      .select('id, name, slug, category, avg_price, status, rating, lat, lng, address, image_url, logo_url, cover_url')
       .eq('owner_id', user.id)
       .single();
     if (v) {
@@ -206,10 +219,19 @@
     statusMsg.textContent = 'Salvando...';
     statusMsg.style.color = '';
 
-    const fd = new FormData(form);
+    const fd   = new FormData(form);
+    const name = fd.get('name') || null;
+
+    // se já existe slug (edição), mantém; senão, gera um novo pelo nome
+    let slug = currentVenue?.slug || null;
+    if (!slug && name) {
+      slug = makeSlug(name);
+    }
+
     const payload = {
       owner_id: user.id,          // RLS exige = auth.uid()
-      name: fd.get('name') || null,
+      name,
+      slug,                       // 👈 agora vai junto pro banco
       category: fd.get('category') || null,
       avg_price: fd.get('avg_price') ? Number(fd.get('avg_price')) : null,
       status: fd.get('status') || 'aberto',
@@ -217,7 +239,7 @@
       lat: fd.get('lat') ? Number(fd.get('lat')) : null,
       lng: fd.get('lng') ? Number(fd.get('lng')) : null,
       address: fd.get('address') || null
-      // image_url: fd.get('image_url') || null  // (se ainda quiser)
+      // image_url: fd.get('image_url') || null
     };
 
     let venue = currentVenue;
