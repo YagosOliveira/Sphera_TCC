@@ -35,7 +35,6 @@
       </nav>
 
       <div class="nav-right">
-        <button id="btnPerfil" class="nav-pill" title="Seu perfil">Perfil</button>
         <a class="nav-login" href="/login.html">Login</a>
       </div>
     </div>
@@ -67,7 +66,16 @@
       <button class="btn primary" id="btnSignin">Entrar</button>
       <div class="or"><span>ou</span></div>
       <button type="button" id="btnGoogle2" class="btn google">Entrar com Google</button>
+
       <p class="hint">Novo por aqui? <a href="#" id="toSignup">Criar conta</a></p>
+
+      <!-- NOVO: link de recuperação de senha -->
+      <p class="hint" style="margin-top:4px;">
+        Esqueceu a senha?
+        <a href="#" id="btnForgot">Recuperar senha</a>
+      </p>
+      <p class="meta" id="forgotMsg" style="display:none;margin-top:4px;"></p>
+
       <p class="meta" id="loginMsg" style="display:none;margin-top:8px;"></p>
     </form>
   </main>
@@ -81,6 +89,8 @@
     const loginMsg   = $('#loginMsg');
     const btnSignup  = $('#btnSignup');
     const btnSignin  = $('#btnSignin');
+    const btnForgot = $('#btnForgot');
+    const forgotMsg = $('#forgotMsg');
 
     $('#toLogin')?.addEventListener('click', e=>{e.preventDefault(); formSignup.classList.add('hidden'); formLogin.classList.remove('hidden');});
     $('#toSignup')?.addEventListener('click', e=>{e.preventDefault(); formLogin.classList.add('hidden'); formSignup.classList.remove('hidden');});
@@ -195,6 +205,40 @@
       await ensureProfile(); // idempotente
       await redirectByRole();
     });
+    // ---- recuperação de senha
+      btnForgot?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!formLogin) return;
+
+        forgotMsg.style.display = 'none';
+
+        // pega o e-mail digitado no form de login
+        const email = new FormData(formLogin).get('email');
+
+        if (!email) {
+          forgotMsg.textContent = 'Digite o e-mail que você usa no cadastro.';
+          forgotMsg.style.color = '#b91c1c';
+          forgotMsg.style.display = 'block';
+          return;
+        }
+
+        // URL para onde o Supabase vai mandar o usuário depois de clicar no link do e-mail
+        const redirectTo = `${location.origin}/reset-password.html`;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo,
+        });
+
+        if (error) {
+          console.error(error);
+          forgotMsg.textContent = 'Erro ao enviar o e-mail. Tente novamente mais tarde.';
+          forgotMsg.style.color = '#b91c1c';
+        } else {
+          forgotMsg.textContent = 'Se o e-mail estiver cadastrado, enviaremos um link de recuperação.';
+          forgotMsg.style.color = '#065f46';
+        }
+        forgotMsg.style.display = 'block';
+      });
 
     // ---- Google OAuth
     function loginWithGoogle() {

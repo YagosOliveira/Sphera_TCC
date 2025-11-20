@@ -422,6 +422,78 @@
         window.supabase.auth.onAuthStateChange(() => updateRight(host));
       }
       
+    const btnProfile = document.getElementById('btnPerfil');
+
+    btnProfile?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+
+        // Sem sessão → manda pro login
+        if (!user) {
+          location.href = '/login.html';
+          return;
+        }
+
+        // 1) Descobrir a role
+        const { data: prof, error: profError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (profError) {
+          console.warn('[perfil] erro buscando role, caindo em /user.html', profError);
+          location.href = '/user.html';
+          return;
+        }
+
+        const role = (prof?.role || 'USER').toUpperCase();
+
+        // 2) Se não for OWNER → perfil de usuário normal
+        if (role !== 'OWNER') {
+          location.href = '/user.html';
+          return;
+        }
+
+        // 3) Se for OWNER → buscar slug/id do estabelecimento
+        // TROQUE "places" e "owner_id" se os nomes da sua tabela forem outros
+        const { data: places, error: placeError } = await supabase
+          .from('venues')            // ex.: tabela de estabelecimentos
+          .select('id, slug')        // campos que você precisa
+          .eq('owner_id', user.id)   // FK para o dono
+          .limit(1);
+
+        if (placeError) {
+          console.warn('[perfil] erro buscando estabelecimento do owner, indo para /owner.html', placeError);
+          location.href = '/owner.html'; // fallback: painel do dono
+          return;
+        }
+
+        const place = places?.[0];
+
+        if (!place) {
+          // Dono ainda não cadastrou estabelecimento → manda pro painel pra configurar
+          location.href = '/owner.html';
+          return;
+        }
+
+        // 4) Montar URL de perfil do dono
+        // Troque "/owner-profile.html" pela sua página de perfil público
+        const basePath = '/profile.html';
+
+        const url =`${basePath}?slug=${encodeURIComponent(place.slug)}`;
+      ;
+
+        location.href = url;
+      } catch (err) {
+        console.error('[perfil] erro inesperado', err);
+        // fallback seguro
+        location.href = '/user.html';
+      }
+    });
+      
   </script>
 
 
