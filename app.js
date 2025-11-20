@@ -1,5 +1,5 @@
 // =====================================================
-//  Haversine para distância em km (a gente ainda pode usar depois)
+//  Haversine para distância em km
 // =====================================================
 function haversineKm(a, b) {
   const toRad = d => d * Math.PI / 180;
@@ -11,9 +11,9 @@ function haversineKm(a, b) {
   const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
+
 // =====================================================
 //  SUPABASE
-//  (usa o client que você criou em window.supabase no index.html)
 // =====================================================
 const supabase = window.supabase;
 
@@ -21,6 +21,10 @@ const supabase = window.supabase;
 let PLACES = [];
 let isLoadingPlaces = true;
 let lastLoadError = null;
+
+// Usuário logado + preferências (para recomendações)
+let CURRENT_USER = null;
+let USER_PREFS = null; // { favCategories, budgetLevel, homeLat, homeLng, maxDistanceKm, featureWeights }
 
 // =====================================================
 //  MAPA
@@ -31,7 +35,6 @@ let map, markersLayer;
 let selectedFilter = "todos";
 
 // Filtro de preço (média + tolerância). null = sem filtro
-// Ex.: { media: 50, tol: 10 }  => faixa válida: [40, 60]
 let priceFilter = null;
 
 // ===== FILTROS POR DIFERENCIAL =====
@@ -45,12 +48,159 @@ function slugFeature(str){
     .toLowerCase()
     .replace(/\s+/g,"_")
     .replace(/[^a-z0-9_]/g,"")
-    // acerto pra legados/comuns
     .replace(/^area_ao_ar_livre$/,"ao_ar_livre");
 }
 
+// Normaliza categorias ("Cafés" → "cafe", "Bares" → "bar")
+function normalizeCategory(str) {
+  if (!str) return "";
+  const s = String(str).toLowerCase().trim();
+
+  if (s.startsWith("caf"))   return "cafe";    // café, cafés, cafe
+  if (s.startsWith("bar"))   return "bar";     // bar, bares
+  if (s.startsWith("parq"))  return "parque";  // parque, parques
+  if (s.startsWith("mus"))   return "museu";   // museu, museus
+
+  return s;
+}
+
 // =====================================================
-//  CARREGAR DADOS DO SUPABASE
+//  CARREGAR PREFERÊNCIAS DO USUÁRIO (para recomendação)
+// =====================================================
+async function loadCurrentUserPrefs() {
+  if (!supabase || !supabase.auth) {
+    console.warn("[reco] Supabase não está disponível para carregar prefs.");
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      console.warn("[reco] erro em getUser()", error);
+      return;
+    }
+
+    const user = data?.user;
+    if (!user) {
+      console.log("[reco] usuário anônimo (sem recomendações personalizadas).");
+      return;
+    }
+
+    CURRENT_USER = user;
+
+    // profile, prefs de features e tabela de features
+    const [
+      { data: profile, error: pErr },
+      { data: prefs,   error: prefErr },
+      { data: feats,   error: fErr }
+    ] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("budget_level, home_lat, home_lng, max_distance_km, fav_categories")
+        .eq("id", user.id)
+        .single(),
+      supabase
+        .from("user_feature_prefs")
+        .select("feature_id, weight")
+        .eq("user_id", user.id),
+      supabase
+        .from("features")
+        .select("id, slug")
+    ]);
+
+    if (pErr)  console.warn("[reco] erro carregando profile", pErr);
+    if (prefErr) console.warn("[reco] erro carregando user_feature_prefs", prefErr);
+    if (fErr)  console.warn("[reco] erro carregando features", fErr);
+
+    const featureById = new Map((feats || []).map(f => [f.id, f.slug]));
+    const featureWeights = new Map();
+
+    (prefs || []).forEach(p => {
+      const slug = featureById.get(p.feature_id);
+      if (!slug) return;
+      featureWeights.set(slugFeature(slug), Number(p.weight) || 1);
+    });
+
+    USER_PREFS = {
+      favCategories: profile?.fav_categories || [],
+      budgetLevel: profile?.budget_level ?? null,
+      homeLat: profile?.home_lat != null ? Number(profile.home_lat) : null,
+      homeLng: profile?.home_lng != null ? Number(profile.home_lng) : null,
+      maxDistanceKm: profile?.max_distance_km != null ? Number(profile.max_distance_km) : null,
+      featureWeights
+    };
+
+    console.log("[reco] preferências do usuário carregadas:", USER_PREFS);
+  } catch (err) {
+    console.error("[reco] erro inesperado ao carregar preferências", err);
+  }
+}
+
+// =====================================================
+//  FUNÇÃO DE SCORE (RECOMENDAÇÃO)
+// =====================================================
+function computeRecommendationScore(place) {
+  if (!USER_PREFS) return 0;
+
+  let score = 0;
+
+  // 1) Categoria favorita
+  const favCats = USER_PREFS.favCategories || [];
+  if (favCats.length && place.categoria) {
+    const catNorm = normalizeCategory(place.categoria);
+    const hasCat = favCats.some(c => normalizeCategory(c) === catNorm);
+    if (hasCat) score += 3;
+  }
+
+  // 2) Orçamento (quanto mais próximo, melhor)
+  if (USER_PREFS.budgetLevel != null && place.preco != null) {
+    const budget = Number(USER_PREFS.budgetLevel);
+    const price  = Number(place.preco);
+    if (Number.isFinite(budget) && Number.isFinite(price)) {
+      const diff = Math.abs(price - budget);
+      if (diff <= 10)      score += 3;
+      else if (diff <= 25) score += 2;
+      else if (diff <= 50) score += 1;
+      else                 score -= 1;
+    }
+  }
+
+  // 3) Diferenciais (features) marcados pelo usuário
+  if (USER_PREFS.featureWeights && USER_PREFS.featureWeights.size > 0) {
+    const feats = (place.features || []).map(slugFeature);
+    feats.forEach(f => {
+      const w = USER_PREFS.featureWeights.get(f);
+      if (w) score += w; // soma o peso de cada feature que bate
+    });
+  }
+
+  // 4) Distância da casa (se tiver home_lat/home_lng e max_distance_km)
+  if (
+    USER_PREFS.homeLat != null && USER_PREFS.homeLng != null &&
+    USER_PREFS.maxDistanceKm != null &&
+    Number.isFinite(place.lat) && Number.isFinite(place.lng)
+  ) {
+    const home = { lat: USER_PREFS.homeLat, lng: USER_PREFS.homeLng };
+    const dist = haversineKm(home, { lat: place.lat, lng: place.lng });
+    const maxD = Number(USER_PREFS.maxDistanceKm);
+
+    if (Number.isFinite(dist) && Number.isFinite(maxD) && maxD > 0) {
+      if (dist > maxD) {
+        // muito longe → desprioriza totalmente
+        score -= 999;
+      } else {
+        // quanto mais perto do limite, menor o bônus
+        const proximityBonus = 1 + Math.max(0, (maxD - dist) / maxD); // entre 1 e 2
+        score += proximityBonus;
+      }
+    }
+  }
+
+  return score;
+}
+
+// =====================================================
+//  CARREGAR DADOS DO SUPABASE (LUGARES)
 // =====================================================
 async function loadPlacesFromSupabase(){
   if (!supabase) {
@@ -88,22 +238,27 @@ async function loadPlacesFromSupabase(){
       featsByVenue.set(row.venue_id, list);
     });
 
-    // 3) Monta PLACES no formato que o resto do código espera
+    // 3) Monta PLACES no formato usado no app + score de recomendação
     PLACES = (venues || [])
       .filter(v => v.is_active !== false) // se tiver essa flag
-      .map(v => ({
-        id: v.id,
-        nome: v.name,
-        categoria: v.category || "outro",
-        lat: Number(v.lat),
-        lng: Number(v.lng),
-        endereco: v.address || "",
-        nota: v.rating ?? 0,
-        preco: v.avg_price ?? 0,
-        logo_url: v.logo_url || null,
-        image_url: v.image_url || null,
-        features: featsByVenue.get(v.id) || []
-      }));
+      .map(v => {
+        const place = {
+          id: v.id,
+          nome: v.name,
+          categoria: v.category || "outro",
+          lat: Number(v.lat),
+          lng: Number(v.lng),
+          endereco: v.address || "",
+          nota: v.rating ?? 0,
+          preco: v.avg_price ?? 0,
+          logo_url: v.logo_url || null,
+          image_url: v.image_url || null,
+          features: featsByVenue.get(v.id) || []
+        };
+
+        place.score = computeRecommendationScore(place);
+        return place;
+      });
 
     console.log("[map] venues carregados:", PLACES.length);
   } catch (err) {
@@ -129,21 +284,16 @@ function initMap() {
   }).addTo(map);
 
   markersLayer = L.layerGroup().addTo(map);
-  // NÃO chama render() aqui – só depois que os dados vierem do Supabase
 }
 
-function normalizeCategory(str) {
-  if (!str) return "";
-
-  const s = String(str).toLowerCase().trim();
-
-  // trata plurais e variações
-  if (s.startsWith("caf"))   return "cafe";    // café, cafés, cafe
-  if (s.startsWith("bar"))   return "bar";     // bar, bares
-  if (s.startsWith("parq"))  return "parque";  // parque, parques
-  if (s.startsWith("mus"))   return "museu";   // museu, museus
-
-  return s;
+// Função para saber se um lugar bate com os diferenciais selecionados
+function matchFeatures(place){
+  if (selectedFeatures.size === 0) return true;
+  const feats = new Set((place.features || []).map(slugFeature));
+  for (const f of selectedFeatures) {
+    if (!feats.has(slugFeature(f))) return false;
+  }
+  return true;
 }
 
 function render() {
@@ -194,9 +344,40 @@ function render() {
 
   const bounds = [];
 
-  filtrados.forEach((p) => {
+  // Garante que todos têm um score atualizado
+  const enriched = filtrados.map(p => {
+    if (typeof p.score !== "number") {
+      p.score = computeRecommendationScore(p);
+    }
+    return p;
+  });
+
+  const hasPrefs =
+    !!USER_PREFS &&
+    (
+      (USER_PREFS.favCategories && USER_PREFS.favCategories.length > 0) ||
+      (USER_PREFS.featureWeights && USER_PREFS.featureWeights.size > 0) ||
+      USER_PREFS.budgetLevel != null ||
+      (USER_PREFS.homeLat != null && USER_PREFS.homeLng != null && USER_PREFS.maxDistanceKm != null)
+    );
+
+  let recs = [];
+  const recIds = new Set();
+
+  if (hasPrefs) {
+    recs = enriched
+      .filter(p => (p.score || 0) > 0)
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 5); // top 5 recomendados
+
+    recs.forEach(r => recIds.add(r.id));
+  }
+
+  const restantes = enriched.filter(p => !recIds.has(p.id));
+
+  function addPlace(p, { isRecommended = false } = {}) {
     const el = document.createElement("article");
-    el.className = "card";
+    el.className = "card" + (isRecommended ? " card--recommended" : "");
     el.setAttribute("role", "button");
     el.setAttribute("tabindex", "0");
     el.dataset.id = p.id;
@@ -205,7 +386,7 @@ function render() {
       .map(f => `<span class="tag">${slugFeature(f).replace(/_/g, " ")}</span>`)
       .join(" ");
 
-    const logo =p.logo_url || p.image_url || p.cover_url || "https://via.placeholder.com/80x80?text=SP";
+    const logo = p.logo_url || p.image_url || p.cover_url || "https://via.placeholder.com/80x80?text=SP";
 
     el.innerHTML = `
       <div class="card-media">
@@ -242,7 +423,26 @@ function render() {
       markersLayer.addLayer(marker);
       bounds.push([p.lat, p.lng]);
     }
-  });
+  }
+
+  if (recs.length) {
+    const titleRecs = document.createElement("div");
+    titleRecs.className = "section-title";
+    titleRecs.textContent = "Recomendados para você";
+    lista.appendChild(titleRecs);
+
+    recs.forEach(p => addPlace(p, { isRecommended: true }));
+
+    const titleAll = document.createElement("div");
+    titleAll.className = "section-title";
+    titleAll.textContent = "Todos os lugares";
+    lista.appendChild(titleAll);
+
+    restantes.forEach(p => addPlace(p, { isRecommended: false }));
+  } else {
+    // Sem prefs ou sem score positivo → lista normal
+    enriched.forEach(p => addPlace(p, { isRecommended: false }));
+  }
 
   if (map && bounds.length > 1) {
     map.fitBounds(bounds, { padding: [40, 40] });
@@ -381,15 +581,6 @@ function bindUI() {
   });
 }
 
-function matchFeatures(place){
-  if (selectedFeatures.size === 0) return true;
-  const feats = new Set((place.features || []).map(slugFeature));
-  for (const f of selectedFeatures) {
-    if (!feats.has(slugFeature(f))) return false;
-  }
-  return true;
-}
-
 // =====================================================
 //  BOOT
 // =====================================================
@@ -397,5 +588,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   console.log("[boot] DOM pronto");
   bindUI();
   initMap();
-  await loadPlacesFromSupabase();
+  await loadCurrentUserPrefs();    // <- NOVO: carrega prefs do usuário logado
+  await loadPlacesFromSupabase();  // carrega lugares já com score calculado
 });
