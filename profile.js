@@ -84,22 +84,37 @@ function renderHeader(venue){
   $("#rating").textContent = venue.rating?.toFixed?.(1) ?? (venue.rating ?? "—");
   $("#status").textContent = badgeStatus(venue.status);
 
-  // Ações (ex.: localização, cardápio, whatsapp, instagram, horários)
   const actions = $("#actions");
-  actions.innerHTML = ""; // limpa
-  const buildAction = (label, href, iconHtml="")=>{
-    if (!href) return;
+  actions.innerHTML = "";
+
+  // helper pra montar os botões
+  const buildAction = (label, href, iconHtml) => {
+    if (!href) return; // se não tiver link, nem mostra o botão
+
     const a = document.createElement("a");
-    a.className = "action"; a.href = href; a.target = "_blank" ;
-    a.innerHTML = `<div class="icon">${iconHtml || "•"}</div><div class="label">${label}</div>`;
+    a.className = "action";
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.innerHTML = `
+      <div class="icon">${iconHtml}</div>
+      <div class="label">${label}</div>
+    `;
     actions.appendChild(a);
   };
 
-  buildAction("Localização", venue.map_url);
-  buildAction("Cardápio",    venue.menu_url);
-  buildAction("Whatsapp",    venue.whatsapp_url);
-  buildAction("Instagram",   venue.instagram_url);
-  buildAction("Horários",    venue.hours_url);
+  // Se você salva só o número no Whats, monta o link aqui
+  let wa = venue.whatsapp_url;
+  if (wa && !wa.startsWith("http")) {
+    wa = `https://wa.me/55${wa.replace(/\D/g, "")}`;
+  } 
+
+  // aqui você escolhe os ícones – usei emoji pra ficar plug-and-play
+  buildAction("Localização", venue.map_url,    `<img src="./assets/icons/pin.svg" alt="Localização">`);
+  buildAction("Cardápio",    venue.menu_url,   `<img src="./assets/icons/menu.svg" alt="Cardápio">`);
+  buildAction("",    wa,               `<img src="./assets/icons/whatsapp.svg" alt="Whatsapp">`);
+  buildAction("",   venue.instagram_url, `<img src="./assets/icons/instagram.svg" alt="Instagram">`);
+  buildAction("Horários",    venue.hours_url,  `<img src="./assets/icons/clock.svg" alt="Horários">`);
 }
 
 function renderFeatures(catalog, selectedIds){

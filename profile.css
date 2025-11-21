@@ -365,4 +365,96 @@ a{ color:inherit; text-decoration:none; }
   .post-img{ width:100%; height: 160px; }
 }
 
+/* ====== Header do perfil / botões de ação ====== */
+
+.profile-header{
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 24px 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  position: relative;   /* <--- importante */
+}
+
+.profile-avatar{
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: #e5e7eb center/cover no-repeat;
+  box-shadow: var(--shadow);
+  margin-top: -60px;
+}
+
+.title-block{
+  flex: 1;
+}
+
+.title-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* ====== Ajuste dos botões de ação (Instagram, Cardápio, etc.) ====== */
+
+.actions{
+  position: absolute;
+  right: 24px;   /* distância da borda direita */
+  bottom: 0;     /* encosta na parte de baixo do header */
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 0;
+}
+
+/* tira o quadrado branco e o shadow, deixa só ícone + texto */
+.action{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;           /* sem padding de card */
+  min-width: auto;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  text-decoration: none;
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
+/* o círculo do ícone */
+.action .icon{
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #e03636 ;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+/* ícone original (svg/png) centralizado dentro do círculo */
+.action .icon img{
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+}
+
+.action .label{
+  font-weight: 600;
+}
+
+@media (max-width: 768px){
+  .actions{
+    position: static;
+    margin-top: 8px;
+    justify-content: flex-start;
+  }
+}
+
 
