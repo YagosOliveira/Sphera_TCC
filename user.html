@@ -123,6 +123,16 @@
       display: block;
         /* deixa a logo branca */
     }
+    .btn-upload{
+      display:inline-block;
+      padding:8px 12px;
+      border-radius:10px;
+      background:#e5e7eb;
+      cursor:pointer;
+      font-size:0.9rem;
+      font-weight:600;
+    }
+    .btn-upload:hover{ background:#d1d5db; }
 
     /* responsivo */
     @media (max-width: 720px){
@@ -271,8 +281,62 @@
       }, { enableHighAccuracy:true, maximumAge:30000, timeout:10000 });
     });
 
-    // avatar (opcional, se quiser implementar bucket 'avatars')
-    // document.getElementById('avatarFile').addEventListener('change', async (e)=> { ... });
+    // sobe a imagem pro bucket 'avatars' e atualiza profiles.avatar_url
+      async function uploadAvatar(file){
+        if (!userId) throw new Error("Usuário não autenticado.");
+
+        /* validação básica de tamanho (2 MB)
+        const maxSize = 2 * 1024 * 1024;
+        if (file.size > maxSize){
+          throw new Error("Escolha uma imagem de até 2 MB.");
+        }*/
+
+        const ext = file.name.split(".").pop();
+        const fileName = `${userId}-${Date.now()}.${ext}`;
+        const filePath = `${userId}/${fileName}`;
+
+        // upload no bucket 'avatars'
+        const { error: uploadError } = await supabase.storage
+          .from("avatars")
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // pega URL pública
+        const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+        const publicUrl = data.publicUrl;
+
+        // grava no profiles
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({ avatar_url: publicUrl })
+          .eq("id", userId);
+
+        if (updateError) throw updateError;
+
+        return publicUrl;
+      }
+
+      // handler do input de arquivo
+      async function handleAvatarChange(e){
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try{
+          // preview rápido com blob local
+          const previewUrl = URL.createObjectURL(file);
+          $("#avatar").src = previewUrl;
+
+          const finalUrl = await uploadAvatar(file);
+          // depois que subir, garante que está usando a URL pública
+          $("#avatar").src = finalUrl;
+        }catch(err){
+          console.error(err);
+          alert("Erro ao enviar imagem: " + err.message);
+        }finally{
+          e.target.value = ""; // limpa input
+        }
+      }
 
     // fluxo
     (async function boot(){
@@ -280,6 +344,10 @@
       await Promise.all([loadProfile(), loadFeatures()]);
       $("#btnSave").addEventListener("click", saveProfile);
       $("#btnSavePrefs").addEventListener("click", savePrefs);
+      const avatarInput = $("#avatarFile");
+      if (avatarInput){
+        avatarInput.addEventListener("change", handleAvatarChange);
+      }
     })();
     
     const btnProfile = document.getElementById('btnPerfil');
@@ -388,8 +456,14 @@
 
       <div class="row">
         <img id="avatar" class="avatar" src="" alt="">
-        <!-- <input type="file" id="avatarFile" accept="image/*" /> -->
-        <div class="muted">Foto de perfil (opcional)</div>
+
+        <div>
+          <label class="btn-upload">
+            Escolher foto
+            <input type="file" id="avatarFile" accept="image/*" hidden />
+          </label>
+          <div class="muted">Sua foto </div>
+        </div>
       </div>
 
       <div class="cols" style="margin-top:12px">
