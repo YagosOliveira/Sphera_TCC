@@ -110,11 +110,11 @@ function renderHeader(venue){
   } 
 
   // aqui você escolhe os ícones – usei emoji pra ficar plug-and-play
-  buildAction("Localização", venue.map_url,    `<img src="./assets/icons/pin.svg" alt="Localização">`);
-  buildAction("Cardápio",    venue.menu_url,   `<img src="./assets/icons/menu.svg" alt="Cardápio">`);
-  buildAction("",    wa,               `<img src="./assets/icons/whatsapp.svg" alt="Whatsapp">`);
+  buildAction("", venue.map_url,    `<img src="./assets/icons/pin.svg" alt="Localização">`);
+  buildAction("",    venue.menu_url,   `<img src="./assets/icons/menu.svg" alt="Cardápio">`);
+  buildAction("",    venue.whatsapp_url, `<img src="./assets/icons/whatsapp.svg" alt="Whatsapp">`);
   buildAction("",   venue.instagram_url, `<img src="./assets/icons/instagram.svg" alt="Instagram">`);
-  buildAction("Horários",    venue.hours_url,  `<img src="./assets/icons/clock.svg" alt="Horários">`);
+  buildAction("",    venue.hours_url,  `<img src="./assets/icons/clock.svg" alt="Horários">`);
 }
 
 function renderFeatures(catalog, selectedIds){
