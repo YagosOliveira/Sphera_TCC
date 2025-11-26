@@ -219,7 +219,7 @@ async function loadPlacesFromSupabase(){
     // 1) Busca os venues
     const { data: venues, error: vErr } = await supabase
       .from("venues")
-      .select("id,name,category,address,lat,lng,avg_price,rating,logo_url,image_url,status")
+      .select("id,name,category,address,lat,lng,avg_price,rating,logo_url,image_url,status,slug")
       .order("name", { ascending: true });
 
     if (vErr) throw vErr;
@@ -245,6 +245,7 @@ async function loadPlacesFromSupabase(){
         const place = {
           id: v.id,
           nome: v.name,
+          slug: v.slug,
           categoria: v.category || "outro",
           lat: Number(v.lat),
           lng: Number(v.lng),
@@ -404,9 +405,24 @@ function render() {
         ${feats ? `<div class="tags">${feats}</div>` : ""}
       </div>
     `;
+    // ao clicar no card, vai para a página de perfil do local
+    function goToProfile() {
+      if (p.slug) {
+        // se quiser absoluto, pode usar: "http://127.0.0.1:5500/profile.html"
+        const baseUrl = "http://127.0.0.1:5500/profile.html";
+        const url = `${baseUrl}?slug=${encodeURIComponent(p.slug)}`;
+        window.location.href = url;
+      } else {
+        // se algum lugar estiver sem slug, mantém o comportamento antigo
+        console.warn("Lugar sem slug, focando no mapa:", p);
+        focusPlace(p);
+      }
+    }
 
-    el.addEventListener("click", () => focusPlace(p));
-    el.addEventListener("keydown", (e) => { if (e.key === "Enter") focusPlace(p); });
+    el.addEventListener("click", goToProfile);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") goToProfile();
+    });
 
     lista.appendChild(el);
 
