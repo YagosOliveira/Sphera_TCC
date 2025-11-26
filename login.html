@@ -116,7 +116,7 @@
       }, { onConflict: 'id' });
     }
 
-    // ---- redireciona por perfil (OWNER -> /owner.html, senão -> /user.html)
+    // ---- redireciona por perfil (OWNER -> /owner.html, senão -> /index.html)
     async function redirectByRole() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -126,16 +126,31 @@
           .select('role')
           .eq('id', user.id)
           .single();
+
         const role = (prof?.role || 'USER').toUpperCase();
-        location.href = role === 'OWNER' ? '/owner.html' : '/user.html';
-      } catch {
-        location.href = '/user.html';
+
+        if (role === 'OWNER') {
+          // painel do estabelecimento
+          location.href = '/owner.html';
+        } else {
+          // usuário comum -> mapa
+          location.href = '/index.html';
+        }
+      } catch (err) {
+        console.error('[login] erro ao buscar role', err);
+        // fallback: manda pro mapa mesmo assim
+        location.href = '/index.html';
       }
     }
 
-    // também roda quando volta do OAuth
-    supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
+
+    // também roda quando volta do OAuth (Google) ou ao recarregar a página
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[auth change]', event, session); // opcional, só pra debug
+
+      // Quando volta do Google normalmente cai em INITIAL_SESSION,
+      // quando faz login por senha cai em SIGNED_IN.
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
         await ensureProfile();
         await redirectByRole();
       }
@@ -181,30 +196,51 @@
       await ensureProfile({ name, phone, role: isOwner ? 'OWNER' : 'USER' });
       await redirectByRole();
     });
-
     // ---- login (e-mail/senha)
     formLogin?.addEventListener('submit', async (e) => {
       e.preventDefault();
       loginMsg.style.display = 'none';
       setLoading(btnSignin, true);
 
-      const fd = new FormData(formLogin);
-      const email = fd.get('email');
-      const password = fd.get('password');
+      try {
+        const fd = new FormData(formLogin);
+        const email = fd.get('email');
+        const password = fd.get('password');
 
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      setLoading(btnSignin, false);
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        loginMsg.textContent = error.message;
+        if (error) {
+          console.error('[login] erro supabase', error);
+          loginMsg.textContent = 'E-mail ou senha inválidos. Tente novamente.';
+          loginMsg.style.color = '#b91c1c';
+          loginMsg.style.display = 'block';
+          return;
+        }
+
+        // garante profile no banco
+        await ensureProfile();
+
+        // feedback visual de sucesso
+        loginMsg.textContent = 'Login realizado com sucesso! Redirecionando para o mapa...';
+        loginMsg.style.color = '#065f46';
+        loginMsg.style.display = 'block';
+
+        // pequeno delay só pra pessoa ver a mensagem
+        setTimeout(() => {
+          redirectByRole(); // vai pra index.html ou owner.html conforme o perfil
+        }, 800);
+
+      } catch (err) {
+        console.error('[login] erro inesperado', err);
+        loginMsg.textContent = 'Ocorreu um erro ao fazer login. Tente novamente em instantes.';
         loginMsg.style.color = '#b91c1c';
         loginMsg.style.display = 'block';
-        return;
+      } finally {
+        // garante que o botão sempre volte do "Aguarde..."
+        setLoading(btnSignin, false);
       }
-
-      await ensureProfile(); // idempotente
-      await redirectByRole();
     });
+
     // ---- recuperação de senha
       btnForgot?.addEventListener('click', async (e) => {
         e.preventDefault();

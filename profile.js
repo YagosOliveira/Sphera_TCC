@@ -81,7 +81,6 @@ function renderHero(venue){
 
 function renderHeader(venue){
   $("#name").textContent   = venue.name || "Sem nome";
-  $("#rating").textContent = venue.rating?.toFixed?.(1) ?? (venue.rating ?? "—");
   $("#status").textContent = badgeStatus(venue.status);
 
   const actions = $("#actions");
@@ -175,10 +174,6 @@ function buildEditModal(venue, catalog, selectedIds){
           <option value="fechado" ${(venue.status?.toLowerCase()==="fechado")?"selected":""}>Fechado</option>
         </select>
       </div>
-      <div>
-        <label>Nota (0–5)</label>
-        <input id="ed_rating" type="number" min="0" max="5" step="0.1" value="${venue.rating ?? ""}" />
-      </div>
 
       <div>
         <label>Preço médio (R$)</label>
@@ -245,7 +240,6 @@ function buildEditModal(venue, catalog, selectedIds){
       name: body.querySelector("#ed_name").value.trim(),
       category: body.querySelector("#ed_category").value.trim(),
       status: body.querySelector("#ed_status").value,
-      rating: Number(body.querySelector("#ed_rating").value) || null,
       avg_price: Number(body.querySelector("#ed_price").value) || null,
       cover_url: body.querySelector("#ed_image").value.trim() || null,  // banner/capa
       logo_url:  body.querySelector("#ed_logo").value.trim()  || null,
@@ -512,3 +506,264 @@ document.addEventListener('keydown', (e)=>{
     alert("Erro ao carregar o perfil: " + err.message);
   }
 })();
+
+//SISTEMA DE AVALIAÇÃO
+//SISTEMA DE AVALIAÇÃO
+//SISTEMA DE AVALIAÇÃO
+
+  let currentUser = null;
+  let currentProfile = null;
+  let currentVenue = null;
+
+  let userRating = null;
+  let avgRating = null;
+  let ratingCount = 0;
+  let canRate = false;
+
+  document.addEventListener("DOMContentLoaded", initRating);
+
+  async function initRating() {
+    const slug = new URLSearchParams(window.location.search).get("slug");
+    if (!slug) {
+      console.error("[rating] slug não informado");
+      return;
+    }
+
+    // 1) Carrega o lugar pelo slug (inclui owner_id pra regra)
+    currentVenue = await loadVenueBySlug(slug);
+    if (!currentVenue) return;
+
+    // 2) Carrega usuário + role
+    await loadCurrentUser();
+
+    // 3) Carrega média e a nota (se já avaliou)
+    await Promise.all([
+      loadAverageRating(),
+      loadUserRating()
+    ]);
+
+    // 4) Decide se pode avaliar (não-logado / owner não avalia)
+    definePermissionToRate();
+
+    // 5) Monta estrelas e resumo
+    renderRatingUI();
+  }
+
+  async function loadVenueBySlug(slug) {
+    const { data, error } = await supabase
+      .from("venues")
+      .select("id, name, owner_id, rating")
+      .eq("slug", slug)
+      .single();
+
+    if (error) {
+      console.error("[rating] erro ao carregar venue", error);
+      return null;
+    }
+    return data;
+  }
+
+  async function loadCurrentUser() {
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        currentUser = null;
+        currentProfile = null;
+        return;
+      }
+
+      currentUser = data.user;
+
+      const { data: prof, error: pErr } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("id", currentUser.id)
+        .single();
+
+      if (!pErr && prof) {
+        currentProfile = prof;
+      }
+    } catch (err) {
+      console.error("[rating] erro ao carregar usuário", err);
+    }
+  }
+
+  async function loadAverageRating() {
+    if (!currentVenue) return;
+
+    const { data, error } = await supabase
+      .from("venue_ratings")
+      .select("rating")
+      .eq("venue_id", currentVenue.id);
+
+    if (error) {
+      console.error("[rating] erro ao carregar notas", error);
+      return;
+    }
+
+    if (!data || !data.length) {
+      avgRating = null;
+      ratingCount = 0;
+      return;
+    }
+
+    const sum = data.reduce((acc, r) => acc + (r.rating || 0), 0);
+    ratingCount = data.length;
+    avgRating = sum / ratingCount;
+  }
+
+  async function loadUserRating() {
+    if (!currentUser || !currentVenue) return;
+
+    const { data, error } = await supabase
+      .from("venue_ratings")
+      .select("rating")
+      .eq("venue_id", currentVenue.id)
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      userRating = data.rating;
+    }
+  }
+
+  function definePermissionToRate() {
+    if (!currentUser || !currentVenue) {
+      canRate = false;
+      return;
+    }
+
+    const role = (currentProfile?.role || "USER").toUpperCase();
+    const isGlobalOwner = role === "OWNER";
+    const isVenueOwner = currentVenue.owner_id === currentUser.id;
+
+    // Regra: só pode avaliar se NÃO for owner e não for dono desse lugar
+    canRate = !isGlobalOwner && !isVenueOwner;
+  }
+
+  function renderRatingUI() {
+    const starsContainer = document.getElementById("rating-stars");
+    const summaryEl = document.getElementById("rating-summary");
+    const hintEl = document.getElementById("rating-hint");
+
+    if (!starsContainer || !summaryEl || !hintEl) return;
+
+    // Resumo da média
+    updateSummaryText();
+
+    starsContainer.innerHTML = "";
+    starsContainer.classList.remove("rating-stars--disabled");
+
+    // Cria 5 estrelas
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "star";
+      btn.dataset.value = String(i);
+      btn.innerHTML = "★";
+      btn.setAttribute("role", "radio");
+      btn.setAttribute("aria-label", `${i} de 5`);
+
+      if (canRate) {
+        btn.addEventListener("click", () => submitRating(i));
+      }
+
+      starsContainer.appendChild(btn);
+    }
+
+    // Se já havia uma nota do usuário, pinta as estrelas
+    paintStars(userRating);
+
+    // Mensagem de baixo
+    if (!currentUser) {
+      starsContainer.classList.add("rating-stars--disabled");
+      hintEl.textContent = "Faça login para avaliar este lugar.";
+    } else if (!canRate) {
+      starsContainer.classList.add("rating-stars--disabled");
+      hintEl.textContent = "Proprietários não podem avaliar este local.";
+    } else {
+      hintEl.textContent = "Clique em uma estrela para avaliar.";
+    }
+  }
+
+  function updateSummaryText() {
+    const summaryEl = document.getElementById("rating-summary");
+    if (!summaryEl) return;
+
+    if (!avgRating || ratingCount === 0) {
+      summaryEl.textContent = "Este lugar ainda não foi avaliado.";
+    } else {
+      const plural = ratingCount > 1 ? "avaliações" : "avaliação";
+      summaryEl.textContent =
+        `Nota média: ${avgRating.toFixed(1)} (${ratingCount} ${plural})`;
+    }
+  }
+
+  function paintStars(value) {
+    const stars = document.querySelectorAll("#rating-stars .star");
+    stars.forEach(star => {
+      const v = Number(star.dataset.value);
+      star.classList.toggle("star--active", value && v <= value);
+    });
+  }
+
+  async function submitRating(value) {
+    if (!canRate || !currentUser || !currentVenue) return;
+
+    // pinta logo as estrelas pro usuário ver feedback imediato
+    userRating = value;
+    paintStars(userRating);
+
+    // 1) upsert da nota do usuário
+    const { error } = await supabase
+      .from("venue_ratings")
+      .upsert(
+        {
+          user_id: currentUser.id,
+          venue_id: currentVenue.id,
+          rating: value
+        },
+        { onConflict: "user_id,venue_id" }
+      );
+
+    if (error) {
+      console.error("[rating] erro ao salvar nota", error);
+      return;
+    }
+
+    // 2) recalcula média e atualiza tabela de venues (campo rating)
+    await recalcAndSaveAverage();
+  }
+
+  async function recalcAndSaveAverage() {
+    if (!currentVenue) return;
+
+    const { data, error } = await supabase
+      .from("venue_ratings")
+      .select("rating")
+      .eq("venue_id", currentVenue.id);
+
+    if (error || !data) {
+      console.error("[rating] erro ao recarregar notas", error);
+      return;
+    }
+
+    if (!data.length) {
+      avgRating = null;
+      ratingCount = 0;
+      updateSummaryText();
+      return;
+    }
+
+    const sum = data.reduce((acc, r) => acc + (r.rating || 0), 0);
+    ratingCount = data.length;
+    avgRating = sum / ratingCount;
+
+    // atualiza o campo rating da tabela de venues (numérico com 1 casa)
+    await supabase
+      .from("venues")
+      .update({ rating: Number(avgRating.toFixed(1)) })
+      .eq("id", currentVenue.id);
+
+    updateSummaryText();
+  }
