@@ -9,6 +9,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+let venueProfile = null;
 /** =========================
  *  HELPERS
  *  ========================= */
@@ -129,22 +130,77 @@ function renderFeatures(catalog, selectedIds){
   });
 }
 
-function renderPosts(posts = []) {
+function renderPosts(posts = [], isOwnerFlag = false) {
   const grid = document.getElementById('posts');
-  if (!Array.isArray(posts)) posts = [];  // Garantir que seja um array
-  grid.innerHTML = posts.length ? posts.map(p => `
-    <article class="post-card">
-      <div class="post-head">
-        <div>${p.title || '(Sem título)'}</div>
-        ${p.published ? '' : '<span class="status-pill" style="margin-left:8px;">Rascunho</span>'}
-      </div>
-      <div class="post-body">
-        ${p.image_url ? `<div class="post-img" style="background-image:url('${p.image_url}')"></div>` : ''}
-        ${p.body ? `<div class="post-text">${p.body}</div>` : ''}
-      </div>
-    </article>
-  `).join('') : `<p class="meta">Sem postagens ainda.</p>`;  // Caso esteja vazio
+  if (!Array.isArray(posts)) posts = [];
+  grid.innerHTML = "";
+
+  if (!posts.length) {
+    grid.innerHTML = `<p class="meta">Sem postagens ainda.</p>`;
+    return;
+  }
+
+  posts.forEach(p => {
+    const article = document.createElement("article");
+    article.className = "post-card";
+    article.dataset.id = p.id;
+
+    // Cabeçalho
+    const head = document.createElement("div");
+    head.className = "post-head";
+
+    const titleDiv = document.createElement("div");
+    titleDiv.textContent = p.title || "(Sem título)";
+    head.appendChild(titleDiv);
+
+    if (!p.published) {
+      const draft = document.createElement("span");
+      draft.className = "status-pill";
+      draft.style.marginLeft = "8px";
+      draft.textContent = "Rascunho";
+      head.appendChild(draft);
+    }
+
+    // Botão de deletar (só para owner)
+    if (isOwnerFlag) {
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "post-delete";
+      delBtn.textContent = "Excluir";
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const ok = confirm("Tem certeza que deseja excluir esta postagem?");
+        if (!ok) return;
+        await deletePost(p.id);
+      });
+      head.appendChild(delBtn);
+    }
+
+    article.appendChild(head);
+
+    // Corpo
+    const bodyDiv = document.createElement("div");
+    bodyDiv.className = "post-body";
+
+    if (p.image_url) {
+      const imgDiv = document.createElement("div");
+      imgDiv.className = "post-img";
+      imgDiv.style.backgroundImage = `url('${p.image_url}')`;
+      bodyDiv.appendChild(imgDiv);
+    }
+
+    if (p.body) {
+      const textDiv = document.createElement("div");
+      textDiv.className = "post-text";
+      textDiv.textContent = p.body;
+      bodyDiv.appendChild(textDiv);
+    }
+
+    article.appendChild(bodyDiv);
+    grid.appendChild(article);
+  });
 }
+
 
 // ========PARA BAIXO É A EDIÇÃO ==========
 // ========PARA BAIXO É A EDIÇÃO ==========
@@ -164,7 +220,7 @@ function buildEditModal(venue, catalog, selectedIds){
       </div>
       <div>
         <label>Categoria</label>
-        <input id="ed_category" value="${venue.category || ""}" placeholder="bar, restaurante, café..." />
+        <input id="ed_category" value="${venue.category || ""}" placeholder="bar, restaurante, café." />
       </div>
 
       <div>
@@ -179,6 +235,7 @@ function buildEditModal(venue, catalog, selectedIds){
         <label>Preço médio (R$)</label>
         <input id="ed_price" type="number" min="0" step="1" value="${venue.avg_price ?? venue.price ?? ""}" />
       </div>
+
       <div>
         <label>Imagem (banner) URL</label>
         <input id="ed_image" value="${venue.cover_url ?? venue.image_url ?? ""}" placeholder="https://..." />
@@ -202,7 +259,26 @@ function buildEditModal(venue, catalog, selectedIds){
         </div>
         <div>
           <label>Longitude</label>
-          <input id="ed_lng" type="number" step="0.000001" value="${venue.lng ?? venue.longitude ?? ""}" />
+          <input id="ed_lng" type="number" step="0.000001" value= "${venue.lng ?? venue.longitude ?? ""}" />
+        </div>
+      </div>
+
+      <!-- NOVO BLOCO: links externos (padronizado com o cadastro) -->
+      <div class="cols" style="grid-column:1/-1; grid-template-columns:1fr 1fr;">
+        <div>
+          <label>Link do cardápio</label>
+          <input id="ed_menu_url" value="${venue.menu_url ?? ""}" placeholder="https://..." />
+        </div>
+      </div>
+
+      <div class="cols" style="grid-column:1/-1; grid-template-columns:1fr 1fr;">
+        <div>
+          <label>WhatsApp (link ou número)</label>
+          <input id="ed_whatsapp" value="${venue.whatsapp_url ?? ""}" placeholder="61999999999 ou https://wa.me/..." />
+        </div>
+        <div>
+          <label>Instagram</label>
+          <input id="ed_instagram" value="${venue.instagram_url ?? ""}" placeholder="https://instagram.com/seuPerfil" />
         </div>
       </div>
     </div>
@@ -210,9 +286,12 @@ function buildEditModal(venue, catalog, selectedIds){
     <label style="margin-top:14px;display:block;">Diferenciais</label>
     <div class="features" id="ed_features"></div>
 
-    <div style="display:flex; gap:8px; margin-top:14px;">
-      <button id="saveVenue" class="btn">Salvar</button>
-      <button id="cancelEdit" class="btn ghost">Cancelar</button>
+    <div style="display:flex; gap:8px; margin-top:14px; justify-content: space-between; flex-wrap: wrap;">
+      <div style="display:flex; gap:8px;">
+        <button id="saveVenue" class="btn">Salvar</button>
+        <button id="cancelEdit" class="btn ghost">Cancelar</button>
+      </div>
+      <button id="btnDeleteAccount" class="btn danger">Excluir conta</button>
     </div>
     <p class="meta" id="saveMsg" style="margin-top:8px;display:none;"></p>
   `;
@@ -246,7 +325,9 @@ function buildEditModal(venue, catalog, selectedIds){
       address:   body.querySelector("#ed_address").value.trim() || null,
       lat: body.querySelector("#ed_lat").value ? Number(body.querySelector("#ed_lat").value) : null,
       lng: body.querySelector("#ed_lng").value ? Number(body.querySelector("#ed_lng").value) : null,
-      //updated_at: new Date().toISOString(),
+      menu_url:      body.querySelector("#ed_menu_url").value.trim() || null,
+      whatsapp_url:  body.querySelector("#ed_whatsapp").value.trim() || null,
+      instagram_url: body.querySelector("#ed_instagram").value.trim() || null,
     };
 
     const { error: upErr } = await supabase.from("venues").update(payload).eq("id", venue.id);
@@ -272,19 +353,72 @@ function buildEditModal(venue, catalog, selectedIds){
       }
     }
 
-    msg.textContent = "Informações salvas!";
-    msg.style.color = "#065f46"; msg.style.display="block";
+    msg.textContent = "Informações salvas! Atualizando a página...";
+    msg.style.color = "#065f46";
+    msg.style.display = "block";
 
-    // re-render da página
-    const merged = { ...venue, ...payload };
-    renderHero(merged);
-    renderHeader(merged);
-    renderFeatures(catalog, checkedIds);
-
-    setTimeout(closeModal, 700);
+    // em vez de re-render manual, recarrega a página inteira
+    setTimeout(() => {
+      location.reload();
+    }, 600);
   });
 
   openModal();
+}
+
+async function handleDeleteAccount() {
+  const ok = confirm(
+    "Tem certeza que deseja excluir sua conta e remover seus estabelecimentos? Essa ação não pode ser desfeita."
+  );
+  if (!ok) return;
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) {
+      console.error("[deleteAccount] erro ao obter usuário", error);
+      alert("Não foi possível identificar o usuário logado.");
+      return;
+    }
+
+    const user = data.user;
+
+    // 1) Remove todos os venues desse owner
+    const { error: venuesErr } = await supabase
+      .from("venues")
+      .delete()
+      .eq("owner_id", user.id);
+      // se preferir só desativar:
+      // .update({ is_active: false })
+
+    if (venuesErr) {
+      console.error("[deleteAccount] erro ao remover venues", venuesErr);
+      alert("Erro ao remover seus estabelecimentos. Tente novamente.");
+      return;
+    }
+
+    // 2) Remove o perfil desse usuário
+    const { error: profErr } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", user.id);
+      // alternativa "soft delete":
+      // .update({ is_active: false, deleted_at: new Date().toISOString() })
+
+    if (profErr) {
+      console.error("[deleteAccount] erro ao remover perfil", profErr);
+      alert("Erro ao remover seu perfil. Tente novamente.");
+      return;
+    }
+
+    // 3) Faz logout e manda pro login
+    await supabase.auth.signOut();
+    alert("Sua conta foi excluída com sucesso.");
+    window.location.href = "/login.html";
+
+  } catch (err) {
+    console.error("[deleteAccount] erro inesperado", err);
+    alert("Erro inesperado ao excluir a conta. Tente novamente.");
+  }
 }
 
 
@@ -417,11 +551,28 @@ async function loadAndRenderPosts(venue) {
   const owner = await isOwner(venue);
   let posts = await fetchPosts(venue.id, owner);
   posts = posts || [];  // Garantir que seja um array vazio se não houver posts
-  renderPosts(posts);  // Agora chamamos a função de renderização com o array de posts
+  renderPosts(posts, owner);  // Agora chamamos a função de renderização com o array de posts, e passa se é owner
 }
 
+async function deletePost(postId) {
+  if (!postId) return;
+  try {
+    const { error } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", postId);
 
+    if (error) throw error;
 
+    // Recarrega a lista de posts depois de excluir
+    if (venueProfile) {
+      await loadAndRenderPosts(venueProfile);
+    }
+  } catch (err) {
+    console.error("Erro ao excluir postagem:", err);
+    alert("Erro ao excluir postagem. Tente novamente.");
+  }
+}
 
 
 
@@ -463,7 +614,7 @@ document.addEventListener('keydown', (e)=>{
 
     // 2) busca venue
     const venue = await fetchVenue(params);
-
+    venueProfile = venue;
     // 3) render base
     renderHero(venue);
     renderHeader(venue);
@@ -695,7 +846,7 @@ document.addEventListener('keydown', (e)=>{
     } else {
       const plural = ratingCount > 1 ? "avaliações" : "avaliação";
       summaryEl.textContent =
-        `Nota média: ${avgRating.toFixed(1)} (${ratingCount} ${plural})`;
+        `Nota: ${avgRating.toFixed(1)} (${ratingCount} ${plural})`;
     }
   }
 

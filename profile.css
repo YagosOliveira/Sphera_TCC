@@ -171,6 +171,58 @@ a{ color:inherit; text-decoration:none; }
   cursor:pointer; font-weight:600;
 }
 
+.post-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* botão de deletar postagem */
+.post-delete{
+  border: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fee2e2;   /* vermelho bem claro */
+  color: #b91c1c;        /* vermelho escuro */
+  transition: background .15s ease, transform .1s ease;
+}
+
+.post-delete:hover{
+  background: #fecaca;
+  transform: translateY(-1px);
+}
+
+/* ===== Ajustes gerais do modal ===== */
+
+/* card da modal (troque .modal por .modal-card se for o seu nome aí) */
+.modal{
+  max-width: 720px;                   /* largura máxima do card */
+  width: min(720px, 100% - 24px);     /* nunca passa da tela */
+  max-height: 90vh;                   /* nunca passa da altura da janela */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;                   /* esconde o que passar do card */
+}
+
+/* conteúdo interno que a gente preenche via JS */
+#modalBody{
+  padding: 16px 20px;
+  max-height: 60vh;                   /* parte rolável do modal */
+  overflow-y: auto;                   /* aparece scroll dentro do card */
+  box-sizing: border-box;
+}
+
+/* garante que os campos não “estourem” pro lado */
+#modalBody input,
+#modalBody select,
+#modalBody textarea{
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
 
 /* ===== Modal ===== */
 .modal-backdrop{
@@ -219,6 +271,26 @@ a{ color:inherit; text-decoration:none; }
 .modal .features{ display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
 .modal .chip{ display:inline-flex; align-items:center; gap:8px; border:1px solid #e5e7eb; border-radius:999px; padding:6px 10px; }
 
+#modalBody .cols{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 16px;
+}
+
+@media (max-width: 640px){
+  #modalBody .cols{
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.btn.danger{
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn.danger:hover{
+  background: #b91c1c;
+}
 /* ===== MODAL DE NOVA POSTAGEM ===== */
 
 /* layout em grid: título e descrição ocupam a linha inteira,
@@ -541,15 +613,18 @@ a{ color:inherit; text-decoration:none; }
   line-height: 1;
   cursor: pointer;
   padding: 2px;
+  color: #ff5050;
   transition: transform .1s ease, filter .1s ease, opacity .1s ease;
 }
 
 .rating-stars .star:hover{
   transform: scale(1.1);
+  color: #f59e0b;
 }
 
 .rating-stars .star--active{
-  filter: drop-shadow(0 0 4px rgba(234,179,8,0.6));
+  filter: drop-shadow(0 0 4px rgba(234,179,8,0.3));
+  color: rgb(255, 232, 29);
 }
 
 .rating-stars--disabled .star{

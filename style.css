@@ -328,7 +328,7 @@ body{
 
 /* Ajuste do conteúdo p/ header fixo */
 .app{
-  margin-top:56px;
+  margin-top:0px;
   height:calc(100dvh - 56px);
 }
 
