@@ -134,6 +134,14 @@
     }
     .btn-upload:hover{ background:#d1d5db; }
 
+    .btn.btn-danger{
+      background:#dc2626;
+    }
+
+    .btn.btn-danger:hover{
+      background:#b91c1c;
+    }
+
     /* responsivo */
     @media (max-width: 720px){
       .navbar .nav-center{ gap: 16px; }
@@ -337,6 +345,58 @@
           e.target.value = ""; // limpa input
         }
       }
+async function deleteUserAccount(){
+  const ok = confirm(
+    "Tem certeza que deseja excluir sua conta? Essa ação não pode ser desfeita."
+  );
+  if (!ok) return;
+
+  try {
+    // garante usuário logado
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) {
+      console.error("[deleteUserAccount] erro ao obter usuário", error);
+      alert("Não foi possível identificar o usuário logado.");
+      return;
+    }
+
+    const user = data.user;
+
+    // 1) Remove preferências de diferenciais
+    const { error: prefsErr } = await supabase
+      .from("user_feature_prefs")
+      .delete()
+      .eq("user_id", user.id);
+
+    if (prefsErr) {
+      console.error("[deleteUserAccount] erro ao remover prefs", prefsErr);
+      alert("Erro ao remover suas preferências. Tente novamente.");
+      return;
+    }
+
+    // 2) Remove o perfil do usuário
+    const { error: profErr } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", user.id);
+
+    if (profErr) {
+      console.error("[deleteUserAccount] erro ao remover perfil", profErr);
+      alert("Erro ao remover seu perfil. Tente novamente.");
+      return;
+    }
+
+    // 3) Faz logout e redireciona
+    await supabase.auth.signOut();
+    alert("Sua conta foi excluída com sucesso.");
+    window.location.href = "/login.html";
+
+  } catch (err) {
+    console.error("[deleteUserAccount] erro inesperado", err);
+    alert("Erro inesperado ao excluir a conta. Tente novamente.");
+  }
+}
+ 
 
     // fluxo
     (async function boot(){
@@ -347,6 +407,10 @@
       const avatarInput = $("#avatarFile");
       if (avatarInput){
         avatarInput.addEventListener("change", handleAvatarChange);
+      }
+      const btnDelete = $("#btnDeleteAccountUser");
+      if (btnDelete){
+        btnDelete.addEventListener("click", deleteUserAccount);
       }
     })();
     
@@ -451,7 +515,10 @@
     <div class="card">
       <div class="bar">
         <h1>Meu perfil</h1>
-        <button class="btn" id="btnSave">Salvar</button>
+        <div class="row" style="gap:8px;">
+          <button class="btn" id="btnSave">Salvar</button>
+          <button class="btn btn-danger" id="btnDeleteAccountUser">Excluir conta</button>
+        </div>
       </div>
 
       <div class="row">
