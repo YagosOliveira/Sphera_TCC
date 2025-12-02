@@ -59,7 +59,8 @@ function normalizeCategory(str) {
   if (s.startsWith("caf"))   return "cafe";    // café, cafés, cafe
   if (s.startsWith("bar"))   return "bar";     // bar, bares
   if (s.startsWith("parq"))  return "parque";  // parque, parques
-  if (s.startsWith("mus"))   return "museu";   // museu, museus
+  if (s.startsWith("mus"))   return "museu";
+  if (s.startsWith("rest"))   return "restaurante";  // restaurante, restaurantes
 
   return s;
 }
@@ -200,7 +201,7 @@ function computeRecommendationScore(place) {
 }
 
 // =====================================================
-//  CARREGAR DADOS DO SUPABASE (LUGARES)
+//  CARREGA DADOS DO SUPABASE (LUGARES)
 // =====================================================
 async function loadPlacesFromSupabase(){
   if (!supabase) {
@@ -604,6 +605,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   console.log("[boot] DOM pronto");
   bindUI();
   initMap();
-  await loadCurrentUserPrefs();    // <- NOVO: carrega prefs do usuário logado
+  await loadCurrentUserPrefs();    // <- carrega prefs do usuário logado
   await loadPlacesFromSupabase();  // carrega lugares já com score calculado
 });
