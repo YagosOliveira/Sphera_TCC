@@ -31,6 +31,49 @@ let USER_PREFS = null; // { favCategories, budgetLevel, homeLat, homeLng, maxDis
 // =====================================================
 let map, markersLayer;
 
+function getCategoryStyle(cat) {
+  const c = normalizeCategory(cat);
+
+  const styles = {
+    cafe:        { color: "#e03636", glyph: "☕" },
+    parque:      { color: "#16a34a", glyph: "🌳" },
+    museu:       { color: "#7c3aed", glyph: "🏛️" },
+    bar:         { color: "#f59e0b", glyph: "🍻" },
+    restaurante: { color: "#2563eb", glyph: "🍽️" },
+    outro:       { color: "#0f172a", glyph: "📍" }
+  };
+
+  return styles[c] || styles.outro;
+}
+
+function makePinIcon({ color, glyph, ring = false }) {
+  // SVG pin moderno (com “bolinha” e sombra)
+  const svg = `
+  <svg width="42" height="52" viewBox="0 0 42 52" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="ds" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="rgba(0,0,0,.25)"/>
+      </filter>
+    </defs>
+
+    <g filter="url(#ds)">
+      <path d="M21 50c8-10 14-18 14-27a14 14 0 1 0-28 0c0 9 6 17 14 27z" fill="${color}"/>
+      <circle cx="21" cy="21" r="9.5" fill="white" opacity="0.95"/>
+      ${ring ? `<circle cx="21" cy="21" r="11.5" fill="none" stroke="white" stroke-width="2" opacity=".95"/>` : ""}
+      <text x="21" y="25" text-anchor="middle" font-size="12" font-family="system-ui, -apple-system, Segoe UI, Roboto" fill="#111827">${glyph}</text>
+    </g>
+  </svg>`;
+
+  return L.divIcon({
+    className: "sphera-pin",
+    html: svg,
+    iconSize: [42, 52],
+    iconAnchor: [21, 50],
+    popupAnchor: [0, -46]
+  });
+}
+// =====================================================
+
 // Filtro atual de categoria (chips)
 let selectedFilter = "todos";
 
@@ -276,16 +319,50 @@ async function loadPlacesFromSupabase(){
 //  MAPA / RENDERIZAÇÃO
 // =====================================================
 function initMap() {
-  // Centraliza em Brasília
   map = L.map("map", { zoomControl: true }).setView([-15.793889, -47.882778], 13);
 
-  L.tileLayer("https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19
-  }).addTo(map);
+  // Opções de mapa base (mais cor / mais clean / dark)
+  const basemaps = {
+    "Colorido (Voyager)": L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: "abcd",
+        maxZoom: 19
+      }
+    ),
+    "Claro (Light)": L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: "abcd",
+        maxZoom: 19
+      }
+    ),
+    "Escuro (Dark)": L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: "abcd",
+        maxZoom: 19
+      }
+    )
+  };
+
+  // Começa no "Colorido"
+  basemaps["Colorido (Voyager)"].addTo(map);
+
+  // Controle pra alternar
+  L.control.layers(basemaps, null, { position: "topright" }).addTo(map);
 
   markersLayer = L.layerGroup().addTo(map);
+
+  // Evita mapa “cinza” quando o layout muda
+  setTimeout(() => map.invalidateSize(), 0);
+  window.addEventListener("resize", () => map.invalidateSize());
 }
 
 // Função para saber se um lugar bate com os diferenciais selecionados
@@ -428,7 +505,13 @@ function render() {
     lista.appendChild(el);
 
     if (markersLayer && Number.isFinite(p.lat) && Number.isFinite(p.lng)) {
-      const marker = L.marker([p.lat, p.lng])
+      const isRecommended = recIds.has(p.id);
+      const { color, glyph } = getCategoryStyle(p.categoria);
+
+      const marker = L.marker([p.lat, p.lng], {
+        icon: makePinIcon({ color, glyph, ring: isRecommended }),
+        zIndexOffset: isRecommended ? 500 : 0
+      })
         .bindPopup(`
           <strong>${p.nome}</strong><br>
           ${p.endereco || ""}<br>
