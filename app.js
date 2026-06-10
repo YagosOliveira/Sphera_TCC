@@ -461,26 +461,44 @@ function render() {
     el.setAttribute("tabindex", "0");
     el.dataset.id = p.id;
 
-    const feats = (p.features || [])
-      .map(f => `<span class="tag">${slugFeature(f).replace(/_/g, " ")}</span>`)
+    const featsArr = (p.features || []).map(f => slugFeature(f).replace(/_/g, " "));
+    const maxFeatures = 2; // Category is already 1 tag, so 2 features + 1 cat = 3 tags max (plus an optional +X)
+    let feats = featsArr.slice(0, maxFeatures)
+      .map(f => `<span class="tag">${f}</span>`)
       .join(" ");
+    if (featsArr.length > maxFeatures) {
+      feats += ` <span class="tag">+${featsArr.length - maxFeatures}</span>`;
+    }
 
-    const logo = p.logo_url || p.image_url || p.cover_url || "https://via.placeholder.com/80x80?text=SP";
+    const hasPhoto = !!(p.logo_url || p.image_url || p.cover_url);
+    const photoUrl = p.logo_url || p.image_url || p.cover_url;
+    const catStyle = getCategoryStyle(p.categoria);
+    
+    const mediaHTML = hasPhoto 
+      ? `<img class="card-avatar" src="${photoUrl}" alt="${p.nome}">`
+      : `<div style="width:100%; height:100%; background-color:${catStyle.color}20; color:${catStyle.color}; display:flex; align-items:center; justify-content:center;">
+           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+             <circle cx="12" cy="10" r="3"></circle>
+           </svg>
+         </div>`;
 
     el.innerHTML = `
       <div class="card-media">
-        <img class="card-avatar" src="${logo}" alt="${p.nome}">
+        ${mediaHTML}
       </div>
       <div class="card-info">
         <div class="card-header">
           <h3>${p.nome}</h3>
-          <span class="badge">
-            ${p.nota != null ? Number(p.nota).toFixed(1) : "–"} •
-            R$ ${p.preco != null ? Number(p.preco).toFixed(0) : "–"}
+          <span class="badge badge--brand">
+            R$ ${p.preco != null ? Number(p.preco).toFixed(0) : "–"} • ★ ${p.nota != null ? Number(p.nota).toFixed(1) : "–"}
           </span>
         </div>
-        <div class="meta">${p.endereco} • ${p.categoria}</div>
-        ${feats ? `<div class="tags">${feats}</div>` : ""}
+        <div class="card-desc">${p.endereco || "Sem endereço cadastrado"}</div>
+        <div class="tags">
+          <span class="tag">${p.categoria}</span>
+          ${feats}
+        </div>
       </div>
     `;
     // ao clicar no card, vai para a página de perfil do local

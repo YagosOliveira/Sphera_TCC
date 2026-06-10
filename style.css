@@ -1,419 +1,434 @@
+/* ---------- Google Font ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 /* ---------- Tokens ---------- */
 *,*::before,*::after{box-sizing:border-box}
-html,body{height:100%}
+html,body{height:100%;margin:0;padding:0}
 :root{
   --bg:#ffffff;
-  --bg-elev:#f6f7fb;               /* fundo do painel */
-  --panel:#f7f7f9;
-  --border:#e6e8ee;
+  --bg-elev:#f9fafb;
+  --panel-bg:#ffffff;
+  --border:#e5e7eb;
   --muted:#6b7280;
-  --text:#13161b;
-  --brand:#e03636;                  /* vermelho do topo/botões */
-  --brand-weak:#fdecec;
-  --brand-border:#f5b7b7;
-  --radius:14px;
-  --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.08);
+  --text:#111827;
+  --brand:#4e0e0e;
+  --brand-accent:#6366f1;
+  --green:#22c55e;
+  --yellow:#eab308;
+  --orange:#f97316;
+  --red:#ef4444;
+  --pink:#ec4899;
+  --radius:16px;
+  --radius-sm:12px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06);
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.12);
 }
 
 body{
-  margin:0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color:var(--text);
-  background:var(--bg);
+  background:#e8f0e8; /* light green map background fallback */
+  overflow:hidden;
 }
 
 /* ---------- Layout ---------- */
 .app{
-  display:grid;
-  grid-template-columns:1fr 420px;  /* mapa | lateral */
-  height:calc(100dvh - 64px);       /* 56px ≈ altura da navbar */
-  background:var(--bg);
-  min-height:0;
-  overflow:hidden;                  /* impede o grid de passar da viewport */
+  position:relative;
+  width:100%;
+  height:calc(100dvh - 56px);
+  overflow:hidden;
 }
 
-#map{width:100%;height:100%;position:relative;z-index:0}
+/* Map takes full space */
+#map{
+  width:100%;
+  height:100%;
+  position:absolute;
+  inset:0;
+  z-index:0;
+  border-radius:0;
+  box-shadow:none;
+}
 
-/* ---------- Painel lateral ---------- */
+/* ---------- Floating Panel (search + list) ---------- */
 .panel{
-  display:grid;
-  grid-template-rows: auto minmax(0, 1fr); /* header fixo | lista que encolhe */
-  background:var(--bg-elev);
-  border-left:1px solid var(--border);
-  height:100%;    /* ocupa a altura toda do .app */
-  min-height:0;   /* permite encolher sem empurrar o mapa */
-}
-
-/* Cabeçalho fixo com busca e chips */
-.panel-header{
-  position:sticky; top:0; z-index:5;
-  background:var(--bg-elev);
-  padding:14px 14px 10px;
-  border-bottom:1px solid var(--border);
-  box-shadow:0 6px 12px rgba(0,0,0,.02);
-}
-
-/* ---------- Busca estilo cápsula ---------- */
-.search{
-  display:flex; align-items:center; gap:10px;
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:999px;
-  padding:8px 8px 8px 14px;
-  box-shadow:var(--shadow);
-}
-.search input[type="text"]{
-  flex:1; font:inherit; border:0; outline:0; background:transparent;
-}
-.search input::placeholder{color:#9aa0a6}
-.search button{
-  border:0; cursor:pointer; padding:0; width:40px; height:36px;
-  border-radius:999px;
-  background:var(--brand);
-  color:#fff; line-height:1; font-weight:600;
-  box-shadow:0 2px 8px rgba(224,54,54,.35);
-}
-/* transforma o texto “Limpar” num ícone de lupa (sem mexer no HTML) */
-#btnLimpar{
-  color:transparent; overflow:hidden; position:relative;
-}
-#btnLimpar::before{
-  content:""; position:absolute; inset:0; margin:auto;
-  width:18px; height:18px; border:2px solid #fff; border-radius:50%;
-  transform:translateY(-1px);
-}
-#btnLimpar::after{
-  content:""; position:absolute; width:9px; height:2px; background:#fff;
-  right:9px; top:20px; transform:rotate(45deg);
-}
-
-/* ---------- Chips (Filtros) ---------- */
-.chips{
-  display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
-}
-.chip{
-  font-size:12px; line-height:1;
-  border:1px solid var(--border);
-  background:#fff;
-  color:#2b2f36;
-  padding:7px 12px;
-  border-radius:999px;
-  cursor:pointer;
-  box-shadow:0 1px 2px rgba(0,0,0,.03);
-  transition:background .15s ease, border-color .15s ease, color .15s ease, transform .06s ease;
-}
-.chip:hover{transform:translateY(-1px)}
-.chip[aria-pressed="true"]{
-  background:var(--brand-weak);
-  border-color:var(--brand-border);
-  color:#9b1111;
-  font-weight:600;
-}
-
-.chips--extras { margin-top:12px }
-.chip--extra{
-  position:relative; padding-left:28px;
-  background:#eee;
-}
-.chip--extra::before{
-  content:""; position:absolute; left:10px; top:50%; transform:translateY(-50%);
-  width:8px; height:8px; border-radius:999px; background:#e03636;
-}
-.chip--extra[aria-pressed="true"]{
-  background:var(--brand-weak);
-  border-color:var(--brand-border);
-  color:#9b1111;
-  font-weight:600;
-}
-
-/* ---------- Lista rolável ---------- */
-.panel-list{
-  padding:12px;
-  background:var(--bg-elev);
-  scrollbar-width:thin;
-  scrollbar-color:#cfcfd6 transparent;
-
-  overflow:auto;        /* scroll só dentro da lista */
-  min-height:0;         /* não força o grid a crescer */
-
+  position:absolute;
+  top:16px;
+  right:16px;
+  bottom:16px;
+  width:370px;
+  z-index:10;
   display:flex;
   flex-direction:column;
-  gap:12px;
+  background:var(--panel-bg);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-lg);
+  border:1px solid rgba(0,0,0,.06);
+  overflow:hidden;
 }
 
-.panel-list::-webkit-scrollbar{width:8px}
-.panel-list::-webkit-scrollbar-thumb{
-  background:#cfcfd6;
-  border-radius:8px;
-}
-.panel-list::-webkit-scrollbar{width:8px}
-.panel-list::-webkit-scrollbar-thumb{background:#cfcfd6;border-radius:8px}
-
-/* ---------- Cards (lista de lugares) ---------- */
-
-.panel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Panel header */
+.panel-header{
+  padding:20px 20px 14px;
+  border-bottom:1px solid var(--border);
+  background:var(--panel-bg);
+  flex-shrink:0;
 }
 
-/* card em linha, com avatar à esquerda */
-.card {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
-  cursor: pointer;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+/* Panel title */
+.panel-title{
+  color: #4e0e0e;
+  margin:0 0 2px;
+  font-size:18px;
+  font-weight:700;
 }
 
-.card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+.panel-subtitle{
+  margin:0 0 14px;
+  font-size:13px;
+  color:var(--muted);
 }
 
-.card-media {
-  flex: 0 0 56px;
+/* ---------- Search bar ---------- */
+.search{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:#fff;
+  border:1px solid #4e0e0e;
+  border-radius:var(--radius-sm);
+  padding:10px 14px;
+  transition:border-color .2s,box-shadow .2s;
 }
 
-.card-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  object-fit: cover;
-  background: #e5e7eb;
+.search:focus-within{
+  border-color:var(--brand-accent);
+  box-shadow:0 0 0 3px rgba(99,102,241,.12);
 }
 
-.card-info {
-  flex: 1;
-  min-width: 0;
+.search-icon{
+  color: #4e0e0e;
+  flex-shrink:0;
+  width:18px;
+  height:18px;
 }
 
-.card-header {
+.search input[type="text"]{
+  flex:1;
+  font:inherit;
+  font-size:14px;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--text);
+}
+
+.search input::placeholder{
+  color:#9ca3af;
+}
+
+/* Hide the old button-based clear */
+.search button{
+  display:none;
+}
+
+/* ---------- Chips (category filters) ---------- */
+.chips{
+  display:flex;
+  gap:8px;
+  flex-wrap:nowrap;
+  margin-top:12px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  padding-bottom:2px;
+}
+.chips::-webkit-scrollbar{display:none}
+
+.chip{
+  font-size:13px;
+  font-weight:500;
+  line-height:1;
+  border:1px solid var(--border);
+  background:#fff;
+  color:#374151;
+  padding:8px 16px;
+  border-radius:999px;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:all .2s ease;
+  flex-shrink:0;
+}
+
+.chip:hover{
+  background:#f3f4f6;
+  border-color:#d1d5db;
+}
+
+.chip[aria-pressed="true"]{
+  background:var(--border);
+  border-color:var(--border);
+  color:#4e0e0e;
+  font-weight:600;
+}
+
+/* Extra chips (features) */
+.chips--extras{
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+
+.chip--extra{
+  font-size:12px;
+  padding:6px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-color:#4e0e0e;
+  color:#4e0e0e;
+  position:relative;
+}
+
+.chip--extra::before{
+  content:none; /* remove the old red dot */
+}
+
+.chip--extra:hover{
+  background:#f3f4f6;
+  color:#374151;
+}
+
+.chip--extra[aria-pressed="true"]{
+  background:#eef2ff;
+  border-color:#c7d2fe;
+  color:#4338ca;
+  font-weight:600;
+}
+
+/* ---------- Scrollable list ---------- */
+.panel-list{
+  padding:12px 16px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  scrollbar-width:thin;
+  scrollbar-color:#d1d5db transparent;
+}
+
+.panel-list::-webkit-scrollbar{width:6px}
+.panel-list::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:6px}
+.panel-list::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- Cards ---------- */
+.card{
+  display:flex;
+  gap:16px;
+  align-items:stretch;
+  padding:14px;
+  border-radius:var(--radius);
+  background:#fff;
+  border:1px solid #f3f4f6;
+  cursor:pointer;
+  transition:all .15s ease;
+  min-height: 116px;
+}
+
+.card:hover{
+  background:#f9fafb;
+  border-color:#e5e7eb;
+  box-shadow:var(--shadow-sm);
+}
+
+.card.active{
+  border-color:var(--brand-accent);
+  box-shadow:0 0 0 2px rgba(99,102,241,.15);
+}
+
+.card-media{
+  flex:0 0 88px;
+  height: 88px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
 }
 
-.card h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: #111827;
+.card-avatar{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display: block;
 }
 
-.card .badge {
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  background: #fee2e2;
-  color: #991b1b;
-  padding: 4px 8px;
-  border-radius: 999px;
-}
-
-.card .meta {
-  margin-top: 2px;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.tags {
-  margin-top: 6px;
+.card-info{
+  flex:1;
+  min-width:0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-direction: column;
 }
 
-.tag {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+.card-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom: 4px;
 }
 
-/* ---------- Seções da lista (títulos tipo "Recomendados") ---------- */
+.card h3{
+  margin:0;
+  font-size:16px;
+  font-weight:700;
+  color:var(--text);
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Status badge */
+.card .badge{
+  font-size:11px;
+  font-weight:600;
+  white-space:nowrap;
+  padding:2px 8px;
+  border-radius:999px;
+  flex-shrink:0;
+}
+
+.badge--brand {
+  background: rgba(78, 14, 14, 0.8);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.card-desc{
+  font-size:13px;
+  color:var(--muted);
+  line-height: 1.4;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex-grow: 1;
+}
+
+.tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+}
+
+.tag{
+  font-size:11px;
+  font-weight: 500;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#f1f5f9;
+  color:#475569;
+}
+
+/* ---------- Section titles ---------- */
 .section-title{
-  margin: 4px 2px 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--muted);
+  margin:6px 0 2px;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
 }
 
-/* Card de recomendação em destaque */
+/* Card recommended highlight */
 .card--recommended{
-  border: 1px solid var(--brand-border);
-  box-shadow: 0 18px 40px rgba(220, 38, 38, 0.18);
-  position: relative;
+  border:1px solid #c7d2fe;
+  background:#fafaff;
 }
 
 .card--recommended::before{
-  content: "★";
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 13px;
-  color: #f59e0b;
+  content:"★";
+  position:absolute;
+  top:8px;
+  right:10px;
+  font-size:12px;
+  color:#f59e0b;
 }
 
+/* ---------- Leaflet skin ---------- */
+.leaflet-container{
+  background:#e8f0e8;
+}
 
-/* ---------- Responsivo ---------- */
-@media (max-width:980px){
-  .app{
-    grid-template-columns:1fr;
-    grid-template-rows:54dvh 1fr; /* mapa em cima */
-  }
-  .panel{
-    border-left:none; border-top:1px solid var(--border);
-  }
+.leaflet-control{
+  border:0 !important;
+  box-shadow:var(--shadow) !important;
+  border-radius:var(--radius-sm) !important;
+  overflow:hidden;
+}
+
+.leaflet-control a{
+  border:0 !important;
+}
+
+.leaflet-popup-content-wrapper{
+  border-radius:var(--radius-sm) !important;
+  box-shadow:var(--shadow-lg) !important;
+}
+
+.leaflet-popup-content{
+  margin:12px 14px !important;
+  font-family:'Inter',system-ui,sans-serif !important;
+  font-size:13px !important;
+  line-height:1.4 !important;
+}
+
+.leaflet-popup-tip{
+  box-shadow:0 8px 24px rgba(0,0,0,.15) !important;
+}
+
+.leaflet-popup-close-button{opacity:.6}
+.leaflet-popup-close-button:hover{opacity:1}
+
+.leaflet-div-icon.sphera-pin{
+  background:transparent !important;
+  border:none !important;
+}
+
+.leaflet-div-icon.sphera-pin:hover{
+  transform:translateY(-2px);
+  filter:drop-shadow(0 10px 18px rgba(0,0,0,.28));
 }
 
 /* ---------- Skip link ---------- */
 .skip-link{
-  position:absolute; left:-9999px; top:auto; width:1px; height:1px;
+  position:absolute;left:-9999px;top:auto;width:1px;height:1px;
 }
 .skip-link:focus{
-  left:8px; top:8px; width:auto; height:auto;
-  background:#fff; border:1px solid var(--border);
-  padding:6px 10px; border-radius:8px;
+  left:8px;top:8px;width:auto;height:auto;
+  background:#fff;border:1px solid var(--border);
+  padding:6px 10px;border-radius:8px;z-index:9999;
 }
 
-
-/* ---------- CABECALHO ---------- */
-
-/* ====== Topbar ====== */
-.topbar{
-  position:fixed; inset:0 0 auto 0; height:56px;
-  background:var(--brand); color:#fff; z-index:50;
-  box-shadow:0 2px 10px rgba(0,0,0,.15);
-}
-.topbar-inner{
-  height:100%;
-  max-width:1280px; margin:0 auto;
-  padding:0 16px;
-  display:flex; align-items:center; justify-content:space-between;
-}
-
-/* Logo como imagem */
-.brand-img{
-  display:block;
-  height:28px;        /* ajuste conforme a proporção da sua logo */
-  width:auto;
-}
-.brand{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  color:#fff;
-  text-decoration:none;
-}
-.brand-name{
-  font-weight:800;
-  letter-spacing:.5px;
-  font-size:18px;
-  color:#fff;
-}
-
-/* Menu centralizado */
-.main-nav{
-  position:absolute; left:50%; top:50%;
-  transform:translate(-50%,-50%);
-  display:flex; gap:28px;
-}
-.main-nav a{
-  color:#fff; text-decoration:none; font-weight:600; font-size:15px;
-  opacity:.95;
-}
-.main-nav a:hover{opacity:1; text-decoration:underline}
-
-/* Botão Login à direita */
-.btn-login{
-  display:inline-flex; align-items:center; justify-content:center;
-  height:34px; padding:0 14px;
-  background:#fff; color:var(--brand);
-  border-radius:999px; font-weight:700; text-decoration:none;
-  box-shadow:0 2px 10px rgba(255,255,255,.25), inset 0 0 0 1px rgba(0,0,0,.05);
-}
-
-
-/* ================================
-   Leaflet – skin (não quebra)
-================================ */
-
-/* Dá acabamento no mapa */
-#map{
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
-}
-
-/* fundo enquanto carrega tiles */
-.leaflet-container{
-  background: #eef2ff;
-}
-
-/* Controles (zoom etc.) */
-.leaflet-control{
-  border: 0 !important;
-  box-shadow: 0 14px 34px rgba(0,0,0,.18) !important;
-  border-radius: 12px !important;
-  overflow: hidden;
-}
-.leaflet-control a{
-  border: 0 !important;
-}
-
-/* Popup estilo card */
-.leaflet-popup-content-wrapper{
-  border-radius: 14px !important;
-  box-shadow: 0 20px 50px rgba(0,0,0,.25) !important;
-}
-.leaflet-popup-content{
-  margin: 12px 14px !important;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial !important;
-  font-size: 14px !important;
-  line-height: 1.3 !important;
-}
-.leaflet-popup-tip{
-  box-shadow: 0 20px 50px rgba(0,0,0,.18) !important;
-}
-
-/* opcional: deixa o "X" mais discreto */
-.leaflet-popup-close-button{
-  opacity: .7;
-}
-.leaflet-popup-close-button:hover{
-  opacity: 1;
-}
-
-/* Remove o “quadradinho branco” padrão do divIcon */
-.leaflet-div-icon.sphera-pin{
-  background: transparent !important;
-  border: none !important;
-}
-
-/* microinteração: dá sensação mais moderna */
-.leaflet-div-icon.sphera-pin:hover{
-  transform: translateY(-2px);
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.28));
-}
-
-
-/* Responsivo do topo */
-@media (max-width:880px){
-  .topbar-inner{grid-template-columns:auto 1fr auto}
-  .main-nav{gap:14px}
-  .brand-name{font-size:16px}
-}
-@media (max-width:640px){
-  .main-nav{justify-content:center}
-  .main-nav a{font-size:14px}
-  .btn-login{height:32px; padding:0 12px}
+/* ---------- Responsivo ---------- */
+@media (max-width:768px){
+  .panel{
+    position:fixed;
+    top:auto;
+    right:0;
+    bottom:0;
+    left:0;
+    width:100%;
+    height:55dvh;
+    border-radius:var(--radius) var(--radius) 0 0;
+    box-shadow:0 -4px 30px rgba(0,0,0,.15);
+  }
 }
